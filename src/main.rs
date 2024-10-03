@@ -2,5 +2,5 @@ use soar::init;
 
 #[tokio::main]
 async fn main() {
-    init().await;
+    let _ = init().await;
 }

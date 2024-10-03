@@ -25,6 +25,13 @@ pub enum Commands {
         force: bool,
     },
 
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "search", visible_alias = "s")]
+    Search {
+        #[arg(required = true)]
+        query: String,
+    },
+
     /// Remove packages
     #[command(arg_required_else_help = true)]
     #[clap(name = "remove", visible_alias = "r")]

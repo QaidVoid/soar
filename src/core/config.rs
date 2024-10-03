@@ -7,6 +7,26 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     /// Path to the directory where app data is stored.
     pub soar_path: String,
+
+    /// A list of remote repositories to fetch packages from.
+    pub repositories: Vec<Repository>,
+
+    /// Indicates whether downloads should be performed in parallel.
+    pub parallel: bool,
+}
+
+/// Struct representing a repository configuration.
+#[derive(Deserialize, Serialize)]
+pub struct Repository {
+    /// Name of the repository.
+    pub name: String,
+
+    /// URL of the repository.
+    pub url: String,
+
+    /// Optional field specifying a custom registry file for the repository. Default:
+    /// `metadata.json`
+    pub registry: Option<String>,
 }
 
 impl Config {
@@ -37,7 +57,13 @@ impl Config {
 
     fn generate(config_path: PathBuf) -> Vec<u8> {
         let def_config = Self {
-            soar_path: "$HOME/.soar".to_string(),
+            soar_path: "$HOME/.soar".to_owned(),
+            repositories: vec![Repository {
+                name: "ajam".to_owned(),
+                url: "https://pkg.ajam.dev".to_owned(),
+                registry: Some("METADATA.AIO.json".to_owned()),
+            }],
+            parallel: true,
         };
         let serialized = serde_json::to_vec_pretty(&def_config).unwrap();
         fs::write(config_path, &serialized).unwrap();
@@ -49,6 +75,11 @@ impl Default for Config {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Initializes the global configuration by forcing the static `CONFIG` to load.
+pub fn init() {
+    let _ = &*CONFIG;
 }
 
 pub static CONFIG: LazyLock<Config> = LazyLock::new(Config::default);
