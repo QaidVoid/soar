@@ -1,0 +1,18 @@
+[package]
+name = "soar"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[dependencies]
+clap = { version = "4.5.19", features = ["derive"] }
+reqwest = { version = "0.12.8", features = ["blocking", "stream"] }
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
