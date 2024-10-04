@@ -12,7 +12,10 @@ pub struct Config {
     pub repositories: Vec<Repository>,
 
     /// Indicates whether downloads should be performed in parallel.
-    pub parallel: bool,
+    pub parallel: Option<bool>,
+
+    /// Limit the number of parallel downloads
+    pub parallel_limit: Option<u32>
 }
 
 /// Struct representing a repository configuration.
@@ -63,7 +66,8 @@ impl Config {
                 url: "https://pkg.ajam.dev".to_owned(),
                 registry: Some("METADATA.AIO.json".to_owned()),
             }],
-            parallel: true,
+            parallel: Some(true),
+            parallel_limit: Some(2)
         };
         let serialized = serde_json::to_vec_pretty(&def_config).unwrap();
         fs::write(config_path, &serialized).unwrap();

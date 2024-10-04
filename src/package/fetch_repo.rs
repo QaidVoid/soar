@@ -46,7 +46,7 @@ pub trait FetchRepository {
 
 impl FetchRepository for PackageRegistry {
     async fn fetch() -> Result<()> {
-        if CONFIG.parallel {
+        if CONFIG.parallel.unwrap_or_default() {
             let tasks: Vec<_> = CONFIG
                 .repositories
                 .iter()
@@ -119,14 +119,18 @@ impl FetchRepository for PackageRegistry {
 
         // Helper function to convert PlatformPackages into a flat HashMap
         // where package names are keys and Package objects are values
-        let convert_to_hashmap = |platform_packages: PlatformPackages| -> HashMap<String, Package> {
-            platform_packages
-                .platforms
-                .into_values()
-                .flatten()
-                .map(|package| (package.name.clone(), package))
-                .collect()
-        };
+        let convert_to_hashmap =
+            |platform_packages: PlatformPackages| -> HashMap<String, HashMap<String, Package>> {
+                let mut result = HashMap::new();
+                for package in platform_packages.platforms.into_values().flatten() {
+                    let variant = package.download_url.split('/').rev().nth(1).unwrap_or("");
+                    let package_entry = result
+                        .entry(package.name.clone())
+                        .or_insert_with(HashMap::new);
+                    package_entry.insert(variant.to_string(), package);
+                }
+                result
+            };
 
         let package_registry = PackageRegistry {
             bin: convert_to_hashmap(parsed.bin),

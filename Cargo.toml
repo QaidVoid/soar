@@ -12,6 +12,7 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.89"
+blake3 = "1.5.4"
 clap = { version = "4.5.19", features = ["derive"] }
 console = "0.15.8"
 futures = "0.3.30"

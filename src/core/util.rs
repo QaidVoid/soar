@@ -100,9 +100,16 @@ pub async fn get_remote_content_length(client: &Client, url: &str) -> Result<u64
     Ok(content_length)
 }
 
-pub fn parse_package_query(query: &str) -> (String, Option<RootPath>) {
-    query
-        .rsplit_once("#")
+#[derive(Debug)]
+pub struct PackageQuery {
+    pub name: String,
+    pub variant: Option<String>,
+    pub root_path: Option<RootPath>,
+}
+
+pub fn parse_package_query(query: &str) -> PackageQuery {
+    let (base_query, root_path) = query
+        .rsplit_once('#')
         .map(|(n, r)| {
             (
                 n.to_owned(),
@@ -117,5 +124,50 @@ pub fn parse_package_query(query: &str) -> (String, Option<RootPath>) {
                 },
             )
         })
-        .unwrap_or((query.to_owned(), None))
+        .unwrap_or((query.to_owned(), None));
+
+    let (name, variant) = base_query
+        .split_once('/')
+        .map(|(v, n)| (n.to_owned(), Some(v.to_owned())))
+        .unwrap_or((base_query, None));
+
+    PackageQuery {
+        name,
+        variant,
+        root_path,
+    }
+}
+
+pub fn format_bytes(bytes: u64) -> String {
+    let kb = 1024u64;
+    let mb = kb * 1024;
+    let gb = mb * 1024;
+
+    match bytes {
+        b if b >= gb => format!("{:.2} GB", b as f64 / gb as f64),
+        b if b >= mb => format!("{:.2} MB", b as f64 / mb as f64),
+        b if b >= kb => format!("{:.2} KB", b as f64 / kb as f64),
+        _ => format!("{} B", bytes),
+    }
+}
+
+pub fn parse_size(size_str: &str) -> Option<u64> {
+    let size_str = size_str.trim();
+    let units = [
+        ("B", 1u64),
+        ("KB", 1000u64),
+        ("MB", 1000u64 * 1000),
+        ("GB", 1000u64 * 1000 * 1000),
+    ];
+
+    for (unit, multiplier) in &units {
+        if size_str.ends_with(unit) {
+            let number_part = size_str.trim_end_matches(unit).trim();
+            if let Ok(num) = number_part.parse::<f64>() {
+                return Some((num * (*multiplier as f64)) as u64);
+            }
+        }
+    }
+
+    None
 }

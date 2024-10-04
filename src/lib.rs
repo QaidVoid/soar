@@ -3,7 +3,10 @@ use clap::Parser;
 use cli::{Args, Commands};
 
 use core::{config, constant::BIN_PATH, util::parse_package_query};
-use package::{fetch_repo::FetchRepository, registry::PackageRegistry, search::PackageSearch};
+use package::{
+    fetch_repo::FetchRepository, install::InstallPackage, registry::PackageRegistry,
+    search::PackageSearch,
+};
 
 mod cli;
 mod core;
@@ -22,7 +25,7 @@ pub async fn init() -> Result<()> {
 
     match args.command {
         Commands::Install { packages, force } => {
-            todo!()
+            registry.install(&packages, force).await?;
         }
         Commands::Fetch => {
             PackageRegistry::fetch().await?;
@@ -31,17 +34,14 @@ pub async fn init() -> Result<()> {
         Commands::Update { package } => todo!(),
         Commands::ListPackages => todo!(),
         Commands::Search { query } => {
-            let (package_name, root_path) = parse_package_query(&query);
-            let result = registry.search(&package_name, root_path);
+            let pkg_query = parse_package_query(&query);
+            let result = registry.search(&pkg_query);
 
             if result.is_empty() {
                 println!("No packages found");
             } else {
                 result.iter().for_each(|data| {
-                    println!(
-                        "[{}] {}: {}",
-                        data.root_path, data.package.name, data.package.description
-                    )
+                    println!("{}", data);
                 })
             }
         }
