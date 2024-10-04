@@ -172,8 +172,7 @@ impl PackageRegistry {
     ///
     /// An Option containing a reference to the Package if found, or None if not found
     pub fn get(&self, query: &PackageQuery) -> Option<Vec<ResolvedPackage>> {
-        let pkg_name = query.name.trim().to_lowercase(); // Normalize package name for comparison
-
+        let pkg_name = query.name.trim();
         let package_iterators = match query.root_path {
             Some(RootPath::Bin) => vec![(&self.bin, RootPath::Bin)],
             Some(RootPath::Base) => vec![(&self.base, RootPath::Base)],
@@ -188,7 +187,7 @@ impl PackageRegistry {
         let mut variants = Vec::new();
 
         for (package_map, root_path) in package_iterators {
-            if let Some(variant_map) = package_map.get(&pkg_name) {
+            if let Some(variant_map) = package_map.get(pkg_name) {
                 for (key, package) in variant_map {
                     let root_path = root_path.clone();
                     let resolved_package = ResolvedPackage {

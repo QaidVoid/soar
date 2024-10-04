@@ -373,7 +373,7 @@ impl PackageRegistry {
                     }
                     1 => &ResolvedPackage {
                         package: packages[0].package.clone(),
-                        variant: String::new(),
+                        variant: pkg_query.variant.unwrap_or_default(),
                         root_path: packages[0].root_path.clone(),
                     },
                     _ => select_package_variant(&packages)?,
