@@ -2,11 +2,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use cli::{Args, Commands};
 
-use core::{config, constant::BIN_PATH, util::parse_package_query};
-use package::{
-    fetch_repo::FetchRepository, install::InstallPackage, registry::PackageRegistry,
-    search::PackageSearch,
-};
+use core::{config, constant::BIN_PATH};
+use package::{registry::PackageRegistry, util::parse_package_query};
 
 mod cli;
 mod core;
@@ -25,7 +22,7 @@ pub async fn init() -> Result<()> {
 
     match args.command {
         Commands::Install { packages, force } => {
-            registry.install(&packages, force).await?;
+            registry.install_packages(&packages, force).await?;
         }
         Commands::Fetch => {
             PackageRegistry::fetch().await?;

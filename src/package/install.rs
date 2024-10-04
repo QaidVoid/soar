@@ -13,7 +13,7 @@ use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::Semaphore};
 use crate::core::{
     config::CONFIG,
     constant::{ERROR, PAPER, TRUCK},
-    util::{parse_package_query, parse_size},
+    util::parse_size,
 };
 
 use super::{
@@ -21,21 +21,6 @@ use super::{
     registry::{Package, PackageRegistry, ResolvedPackage},
     util::{setup_symlink, verify_checksum},
 };
-
-pub trait InstallPackage {
-    async fn install(&self, package_names: &[String], force: bool) -> Result<()>;
-}
-
-impl InstallPackage for PackageRegistry {
-    async fn install(&self, package_names: &[String], force: bool) -> Result<()> {
-        let packages = self.get_packages_to_install(package_names)?;
-        if CONFIG.parallel.unwrap_or_default() {
-            self.install_parallel(&packages, force).await
-        } else {
-            self.install_sequential(&packages, force).await
-        }
-    }
-}
 
 struct InstallContext {
     install_path: PathBuf,
@@ -61,6 +46,15 @@ impl InstallContext {
 }
 
 impl PackageRegistry {
+    pub async fn install_packages(&self, package_names: &[String], force: bool) -> Result<()> {
+        let packages = self.parse_packages_from_names(package_names)?;
+        if CONFIG.parallel.unwrap_or_default() {
+            self.install_parallel(&packages, force).await
+        } else {
+            self.install_sequential(&packages, force).await
+        }
+    }
+
     async fn install_sequential(&self, packages: &[ResolvedPackage], force: bool) -> Result<()> {
         let total_packages = packages.len();
         let total_bytes = self.calculate_total_bytes(packages).await;
@@ -355,57 +349,4 @@ impl PackageRegistry {
         ));
         pb
     }
-
-    fn get_packages_to_install(&self, package_names: &[String]) -> Result<Vec<ResolvedPackage>> {
-        package_names
-            .iter()
-            .map(|package_name| {
-                let pkg_query = parse_package_query(package_name);
-                let packages = self
-                    .get(&pkg_query)
-                    .ok_or_else(|| anyhow::anyhow!("Package {} not found", package_name))?;
-
-                let package = match packages.len() {
-                    0 => {
-                        return Err(anyhow::anyhow!(
-                            "Is it a fish? Is is a frog? On no, it's a fly."
-                        ))
-                    }
-                    1 => &ResolvedPackage {
-                        package: packages[0].package.clone(),
-                        variant: pkg_query.variant.unwrap_or_default(),
-                        root_path: packages[0].root_path.clone(),
-                    },
-                    _ => select_package_variant(&packages)?,
-                };
-
-                Ok(package.clone())
-            })
-            .collect()
-    }
-}
-
-fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
-    println!(
-        "\nMultiple packages available for {}",
-        packages[0].package.name
-    );
-    for (i, package) in packages.iter().enumerate() {
-        println!("  {}. {}: {}", i + 1, package, package.package.description);
-    }
-
-    let selection = loop {
-        print!("Select a variant (1-{}): ", packages.len());
-        std::io::stdout().flush()?;
-
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-
-        match input.trim().parse::<usize>() {
-            Ok(n) if n > 0 && n <= packages.len() => break n - 1,
-            _ => println!("Invalid selection, please try again."),
-        }
-    };
-
-    Ok(&packages[selection])
 }

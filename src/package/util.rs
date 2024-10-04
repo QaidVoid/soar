@@ -1,11 +1,11 @@
-use std::path::Path;
+use std::{io::Write, path::Path};
 
 use anyhow::Result;
 use tokio::{fs::File, io::AsyncReadExt};
 
 use crate::core::constant::BIN_PATH;
 
-use super::registry::{Package, ResolvedPackage};
+use super::registry::{Package, ResolvedPackage, RootPath};
 
 pub async fn setup_symlink(install_path: &Path, resolved_package: &ResolvedPackage) -> Result<()> {
     let symlink_path = BIN_PATH.join(&resolved_package.package.bin_name);
@@ -29,4 +29,67 @@ pub async fn verify_checksum(path: &Path, package: &Package) -> Result<bool> {
     }
 
     Ok(hasher.finalize().to_hex().to_string() == package.bsum)
+}
+
+#[derive(Debug)]
+pub struct PackageQuery {
+    pub name: String,
+    pub variant: Option<String>,
+    pub root_path: Option<RootPath>,
+}
+
+pub fn parse_package_query(query: &str) -> PackageQuery {
+    let (base_query, root_path) = query
+        .rsplit_once('#')
+        .map(|(n, r)| {
+            (
+                n.to_owned(),
+                match r.to_lowercase().as_str() {
+                    "base" => Some(RootPath::Base),
+                    "bin" => Some(RootPath::Bin),
+                    "pkg" => Some(RootPath::Pkg),
+                    _ => {
+                        eprintln!("Invalid root path provided for {}", query);
+                        std::process::exit(-1);
+                    }
+                },
+            )
+        })
+        .unwrap_or((query.to_owned(), None));
+
+    let (name, variant) = base_query
+        .split_once('/')
+        .map(|(v, n)| (n.to_owned(), Some(v.to_owned())))
+        .unwrap_or((base_query, None));
+
+    PackageQuery {
+        name,
+        variant,
+        root_path,
+    }
+}
+
+pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
+    println!(
+        "\nMultiple packages available for {}",
+        packages[0].package.name
+    );
+    for (i, package) in packages.iter().enumerate() {
+        println!("  {}. {}: {}", i + 1, package, package.package.description);
+    }
+
+    let selection = loop {
+        print!("Select a variant (1-{}): ", packages.len());
+        std::io::stdout().flush()?;
+
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+
+        match input.trim().parse::<usize>() {
+            Ok(n) if n > 0 && n <= packages.len() => break n - 1,
+            _ => println!("Invalid selection, please try again."),
+        }
+    };
+
+    Ok(&packages[selection])
 }

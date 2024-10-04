@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
-use crate::core::util::PackageQuery;
-
-use super::registry::{Package, PackageRegistry, RootPath};
+use super::{
+    registry::{Package, PackageRegistry, RootPath},
+    util::PackageQuery,
+};
 
 /// Search result for a package query.
 ///
@@ -21,7 +22,7 @@ pub struct SearchResult<'a> {
     pub variant: String,
 }
 
-pub trait PackageSearch {
+impl PackageRegistry {
     /// Searches for packages matching the given query string.
     ///
     /// # Arguments
@@ -32,11 +33,7 @@ pub trait PackageSearch {
     /// # Returns
     ///
     /// A vector of `SearchResult`s, sorted by relevance (highest first)
-    fn search(&self, query: &PackageQuery) -> Vec<SearchResult>;
-}
-
-impl PackageSearch for PackageRegistry {
-    fn search(&self, query: &PackageQuery) -> Vec<SearchResult> {
+    pub fn search(&self, query: &PackageQuery) -> Vec<SearchResult> {
         let pkg_name = query.name.trim().to_lowercase();
 
         let package_iterators = match query.root_path {

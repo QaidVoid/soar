@@ -7,9 +7,6 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use reqwest::Client;
-
-use crate::package::registry::RootPath;
 
 /// Expands the environment variables and user home directory in a given path.
 ///
@@ -63,79 +60,6 @@ pub fn build_path(path: &str) -> Result<PathBuf> {
 /// system (e.g., `Linux`) into a single string to identify the platform.
 pub fn get_platform() -> String {
     format!("{ARCH}-{}{}", &OS[..1].to_uppercase(), &OS[1..])
-}
-
-/// Fetches the content length of a remote resource using a HEAD request.
-///
-/// # Arguments
-///
-/// * `client` - A `reqwest::Client` used to make the request.
-/// * `url` - A string slice that holds the URL to fetch.
-///
-/// # Returns
-///
-/// A `Result<u64>` containing the content length of the remote resource.
-///
-/// # Errors
-///
-/// Returns an error if the request fails or if the `Content-Length` header is not found.
-pub async fn get_remote_content_length(client: &Client, url: &str) -> Result<u64> {
-    let response = client
-        .head(url)
-        .send()
-        .await
-        .context("Failed to send HEAD request")?;
-
-    let content_length = match response.headers().get("Content-Length") {
-        Some(length) => length
-            .to_str()
-            .context("Failed to convert Content-Length header to string")
-            .and_then(|s| {
-                s.parse::<u64>()
-                    .context("Failed to parse Content-Length as u64")
-            })?,
-        None => return Err(anyhow::anyhow!("Content-Length header not found")),
-    };
-
-    Ok(content_length)
-}
-
-#[derive(Debug)]
-pub struct PackageQuery {
-    pub name: String,
-    pub variant: Option<String>,
-    pub root_path: Option<RootPath>,
-}
-
-pub fn parse_package_query(query: &str) -> PackageQuery {
-    let (base_query, root_path) = query
-        .rsplit_once('#')
-        .map(|(n, r)| {
-            (
-                n.to_owned(),
-                match r.to_lowercase().as_str() {
-                    "base" => Some(RootPath::Base),
-                    "bin" => Some(RootPath::Bin),
-                    "pkg" => Some(RootPath::Pkg),
-                    _ => {
-                        eprintln!("Invalid root path provided for {}", query);
-                        std::process::exit(-1);
-                    }
-                },
-            )
-        })
-        .unwrap_or((query.to_owned(), None));
-
-    let (name, variant) = base_query
-        .split_once('/')
-        .map(|(v, n)| (n.to_owned(), Some(v.to_owned())))
-        .unwrap_or((base_query, None));
-
-    PackageQuery {
-        name,
-        variant,
-        root_path,
-    }
 }
 
 pub fn format_bytes(bytes: u64) -> String {

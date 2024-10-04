@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 use tokio::task::JoinSet;
 
 use crate::core::config::CONFIG;
-use crate::core::util::{build_path, PackageQuery};
+use crate::core::util::build_path;
 
-use super::fetch_repo::FetchRepository;
+use super::util::{parse_package_query, select_package_variant, PackageQuery};
 
 /// Represents a package in the registry.
 ///
@@ -211,6 +211,37 @@ impl PackageRegistry {
             None
         }
     }
+
+    pub fn parse_packages_from_names(
+        &self,
+        package_names: &[String],
+    ) -> Result<Vec<ResolvedPackage>> {
+        package_names
+            .iter()
+            .map(|package_name| {
+                let pkg_query = parse_package_query(package_name);
+                let packages = self
+                    .get(&pkg_query)
+                    .ok_or_else(|| anyhow::anyhow!("Package {} not found", package_name))?;
+
+                let package = match packages.len() {
+                    0 => {
+                        return Err(anyhow::anyhow!(
+                            "Is it a fish? Is is a frog? On no, it's a fly."
+                        ))
+                    }
+                    1 => &ResolvedPackage {
+                        package: packages[0].package.clone(),
+                        variant: pkg_query.variant.unwrap_or_default(),
+                        root_path: packages[0].root_path.clone(),
+                    },
+                    _ => select_package_variant(&packages)?,
+                };
+
+                Ok(package.clone())
+            })
+            .collect()
+    }
 }
 
 impl Display for ResolvedPackage {
@@ -218,11 +249,7 @@ impl Display for ResolvedPackage {
         if self.variant.is_empty() {
             write!(f, "{}", self.package.name)
         } else {
-            write!(
-                f,
-                "{}/{}",
-                self.variant, self.package.name
-            )
+            write!(f, "{}/{}", self.variant, self.package.name)
         }
     }
 }

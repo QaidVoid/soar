@@ -15,7 +15,7 @@ pub struct Config {
     pub parallel: Option<bool>,
 
     /// Limit the number of parallel downloads
-    pub parallel_limit: Option<u32>
+    pub parallel_limit: Option<u32>,
 }
 
 /// Struct representing a repository configuration.
@@ -67,7 +67,7 @@ impl Config {
                 registry: Some("METADATA.AIO.json".to_owned()),
             }],
             parallel: Some(true),
-            parallel_limit: Some(2)
+            parallel_limit: Some(2),
         };
         let serialized = serde_json::to_vec_pretty(&def_config).unwrap();
         fs::write(config_path, &serialized).unwrap();

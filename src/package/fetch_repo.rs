@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::core::{
     config::{Repository, CONFIG},
     constant::{REGISTRY_PATH, SPARKLE, TRUCK},
-    util::{get_platform, get_remote_content_length},
+    util::get_platform,
 };
 
 use super::registry::{Package, PackageRegistry};
@@ -26,26 +26,11 @@ struct RegistryResponse {
     pkg: PlatformPackages,
 }
 
-pub trait FetchRepository {
+impl PackageRegistry {
     /// Fetches all configured repositories.
     /// This method will either fetch repositories in parallel or
     /// sequentially based on the configuration.
-    async fn fetch() -> Result<()>;
-
-    /// Fetches a single repository's package metadata.
-    ///
-    /// # Arguments
-    ///
-    /// * `repo` - The repository configuration containing URL and other details
-    ///
-    /// # Returns
-    ///
-    /// Returns a Result containing the processed PackageRegistry on success
-    async fn fetch_repository(repo: &Repository) -> Result<PackageRegistry>;
-}
-
-impl FetchRepository for PackageRegistry {
-    async fn fetch() -> Result<()> {
+    pub async fn fetch() -> Result<()> {
         if CONFIG.parallel.unwrap_or_default() {
             let tasks: Vec<_> = CONFIG
                 .repositories
@@ -73,7 +58,16 @@ impl FetchRepository for PackageRegistry {
         Ok(())
     }
 
-    async fn fetch_repository(repo: &Repository) -> Result<PackageRegistry> {
+    /// Fetches a single repository's package metadata.
+    ///
+    /// # Arguments
+    ///
+    /// * `repo` - The repository configuration containing URL and other details
+    ///
+    /// # Returns
+    ///
+    /// Returns a Result containing the processed PackageRegistry on success
+    pub async fn fetch_repository(repo: &Repository) -> Result<PackageRegistry> {
         let url = format!(
             "{}/{}/{}",
             repo.url,
@@ -84,8 +78,13 @@ impl FetchRepository for PackageRegistry {
         );
 
         let client = reqwest::Client::new();
-        let content_length = get_remote_content_length(&client, &url).await?;
+        let response = client
+            .get(&url)
+            .send()
+            .await
+            .context("Failed to fetch repository")?;
 
+        let content_length = response.content_length().unwrap_or(0);
         let pb = ProgressBar::new(content_length);
         pb.set_style(
             ProgressStyle::with_template("{spinner:.green} {msg} [{bytes}/{total_bytes}]").unwrap(),
@@ -96,15 +95,9 @@ impl FetchRepository for PackageRegistry {
             repo.url
         ));
 
-        let res = client
-            .get(&url)
-            .send()
-            .await
-            .context("Failed to fetch repository")?;
-
         let mut downloaded_bytes = 0;
         let mut content = Vec::new();
-        let mut stream = res.bytes_stream();
+        let mut stream = response.bytes_stream();
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.context("Failed to read chunk")?;
