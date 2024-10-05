@@ -9,17 +9,6 @@ use std::{
 use anyhow::{Context, Result};
 
 /// Expands the environment variables and user home directory in a given path.
-///
-/// - `$VAR` will be replaced with the value of the environment variable `VAR`.
-/// - `~` at the beginning of the path will be replaced with the user's home directory.
-///
-/// # Arguments
-///
-/// * `path` - A string slice that holds the path to be expanded.
-///
-/// # Returns
-///
-/// A `PathBuf` containing the expanded path.
 pub fn build_path(path: &str) -> Result<PathBuf> {
     let mut result = String::new();
     let mut chars = path.chars().peekable();

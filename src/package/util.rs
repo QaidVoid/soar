@@ -11,19 +11,15 @@ use super::registry::{Package, ResolvedPackage, RootPath};
 pub async fn setup_symlink(
     install_path: &Path,
     resolved_package: &ResolvedPackage,
-    multi_progress: &MultiProgress,
 ) -> Result<()> {
     let symlink_path = BIN_PATH.join(&resolved_package.package.bin_name);
     if symlink_path.exists() {
-        if xattr::get(&symlink_path, "user.owner")?.as_deref() != Some(b"soar") {
-            set_error(
-                multi_progress,
-                &format!(
-                    "Path {} is not managed by soar. Skipping symlink.",
-                    symlink_path.to_string_lossy()
-                ),
-            );
-            return Ok(());
+        let attr = xattr::get_deref(&symlink_path, "user.owner")?;
+        if attr.as_deref() != Some(b"soar") {
+            return Err(anyhow::Error::msg(format!(
+                "Path {} is not managed by soar. Skipping symlink.",
+                symlink_path.to_string_lossy()
+            )));
         }
         tokio::fs::remove_file(&symlink_path).await?;
     }
@@ -76,6 +72,7 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
         .split_once('/')
         .map(|(v, n)| (n.to_owned(), Some(v.to_owned())))
         .unwrap_or((base_query, None));
+
 
     PackageQuery {
         name,

@@ -37,8 +37,8 @@ pub async fn init() -> Result<()> {
             if result.is_empty() {
                 println!("No packages found");
             } else {
-                result.iter().for_each(|data| {
-                    println!("{}", data);
+                result.iter().for_each(|pkg| {
+                    println!("[{}] {}: {}", pkg.root_path, pkg, pkg.package.description);
                 })
             }
         }

@@ -105,7 +105,7 @@ impl PackageRegistry {
                         index,
                         total_packages,
                         &multi_progress,
-                        tracker.clone(),
+                        tracker,
                     )
                     .await;
                 drop(permit);
@@ -140,7 +140,9 @@ impl PackageRegistry {
 
         self.download_and_install_package(&ctx, package, multi_progress, tracker, index, total)
             .await?;
-        setup_symlink(&ctx.install_path, package, multi_progress).await?;
+        if let Err(e) = setup_symlink(&ctx.install_path, package).await {
+            set_error(multi_progress, &e.to_string());
+        };
         Ok(())
     }
 
@@ -185,6 +187,7 @@ impl PackageRegistry {
         let ResolvedPackage { package, .. } = resolved_package;
         let client = reqwest::Client::new();
         let downloaded_bytes = self.get_downloaded_bytes(&ctx.temp_file_path).await?;
+
         let response = self
             .make_request(&client, package, downloaded_bytes)
             .await?;
@@ -242,13 +245,13 @@ impl PackageRegistry {
     ) -> Result<reqwest::Response> {
         let response = client
             .get(&package.download_url)
-            .header("Range", format!("bytes={}-", downloaded_bytes))
+            .header("Range", format!("bytes={}-", downloaded_bytes - 1))
             .send()
             .await
             .context(format!("Failed to download package {}", package.name))?;
 
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Download failed: {:?}", response.status()));
+            return Err(anyhow::anyhow!("Download failed: {:?}", response.status(),));
         }
 
         Ok(response)
@@ -267,14 +270,12 @@ impl PackageRegistry {
     async fn finalize_installation(
         &self,
         ctx: &InstallContext,
-        package: &ResolvedPackage,
+        resolved_package: &ResolvedPackage,
         multi_progress: &MultiProgress,
         progress_bar: &ProgressBar,
         total_bytes: u64,
     ) -> Result<()> {
-        let ResolvedPackage {
-            package, variant, ..
-        } = package;
+        let ResolvedPackage { package, .. } = resolved_package;
 
         progress_bar.set_position(total_bytes);
         progress_bar.finish();
@@ -283,7 +284,10 @@ impl PackageRegistry {
             true => {
                 set_error(
                     multi_progress,
-                    &format!("Missing checksum for {}. Installing anyway.", package.name),
+                    &format!(
+                        "Missing checksum for {}. Installing anyway.",
+                        resolved_package
+                    ),
                 );
                 self.save_file(ctx).await?;
             }
@@ -291,7 +295,7 @@ impl PackageRegistry {
                 if verify_checksum(&ctx.temp_file_path, package).await? {
                     self.save_file(ctx).await?;
                 } else {
-                    eprint!("Checksum verification failed for {}/{}. Do you want to remove the file? (y/n): ", variant, package.name);
+                    eprint!("Checksum verification failed for {}. Do you want to remove the file? (y/n): ", resolved_package);
                     std::io::stdout().flush()?;
 
                     let mut response = String::new();

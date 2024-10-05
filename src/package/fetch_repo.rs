@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, env::consts::ARCH};
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
@@ -59,19 +59,12 @@ impl PackageRegistry {
     }
 
     /// Fetches a single repository's package metadata.
-    ///
-    /// # Arguments
-    ///
-    /// * `repo` - The repository configuration containing URL and other details
-    ///
-    /// # Returns
-    ///
-    /// Returns a Result containing the processed PackageRegistry on success
     pub async fn fetch_repository(repo: &Repository) -> Result<PackageRegistry> {
+        let platform = get_platform();
         let url = format!(
             "{}/{}/{}",
             repo.url,
-            get_platform(),
+            platform,
             repo.registry
                 .to_owned()
                 .unwrap_or("metadata.json".to_owned())
@@ -113,14 +106,20 @@ impl PackageRegistry {
         // Helper function to convert PlatformPackages into a flat HashMap
         // where package names are keys and Package objects are values
         let convert_to_hashmap =
-            |platform_packages: PlatformPackages| -> HashMap<String, HashMap<String, Package>> {
+            |platform_packages: PlatformPackages| -> HashMap<String, Vec<Package>> {
                 let mut result = HashMap::new();
                 for package in platform_packages.platforms.into_values().flatten() {
-                    let variant = package.download_url.split('/').rev().nth(1).unwrap_or("");
-                    let package_entry = result
-                        .entry(package.name.clone())
-                        .or_insert_with(HashMap::new);
-                    package_entry.insert(variant.to_string(), package);
+                    let variant = package
+                        .download_url
+                        .split('/')
+                        .rev()
+                        .nth(1)
+                        .map(|v| v.to_owned())
+                        .filter(|v| {
+                            v != ARCH && v != &platform && v != &platform.replace('-', "_")
+                        });
+                    let package_entry = result.entry(package.name.to_owned()).or_insert_with(Vec::new);
+                    package_entry.push(Package { variant, ..package });
                 }
                 result
             };

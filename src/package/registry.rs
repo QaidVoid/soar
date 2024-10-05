@@ -19,12 +19,10 @@ pub struct Package {
     pub name: String,
     pub bin_name: String,
     pub description: String,
-    pub note: String,
     pub version: String,
     pub download_url: String,
     pub size: String,
     pub bsum: String,
-    pub shasum: String,
     pub build_date: String,
     pub src_url: String,
     pub web_url: String,
@@ -32,6 +30,7 @@ pub struct Package {
     pub build_log: String,
     pub category: String,
     pub extra_bins: String,
+    pub variant: Option<String>,
 }
 
 /// Registry containing all available packages.
@@ -42,9 +41,9 @@ pub struct Package {
 /// - pkg: Application packages (typically AppImages)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PackageRegistry {
-    pub bin: HashMap<String, HashMap<String, Package>>,
-    pub base: HashMap<String, HashMap<String, Package>>,
-    pub pkg: HashMap<String, HashMap<String, Package>>,
+    pub bin: HashMap<String, Vec<Package>>,
+    pub base: HashMap<String, Vec<Package>>,
+    pub pkg: HashMap<String, Vec<Package>>,
 }
 
 /// Represents the different sections of the package registry.
@@ -58,28 +57,11 @@ pub enum RootPath {
 #[derive(Debug, Clone)]
 pub struct ResolvedPackage {
     pub root_path: RootPath,
-    pub variant: String,
     pub package: Package,
 }
 
 impl PackageRegistry {
     /// Creates a new PackageRegistry by loading from local files or fetching from repositories.
-    ///
-    /// This method will:
-    /// 1. Try to load packages from local registry files
-    /// 2. Fetch from remote repositories if local files don't exist or are invalid
-    /// 3. Merge all packages into a single registry
-    ///
-    /// # Returns
-    ///
-    /// A Result containing the new PackageRegistry or an error
-    ///
-    /// # Errors
-    ///
-    /// Will return an error if:
-    /// - Unable to read local registry files
-    /// - Unable to fetch from repositories
-    /// - Unable to parse registry data
     pub async fn new() -> Result<Self> {
         let mut set = JoinSet::new();
         let mut bin_packages = HashMap::new();
@@ -134,21 +116,6 @@ impl PackageRegistry {
     }
 
     /// Loads a PackageRegistry from a local file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path pointing to the registry file
-    ///
-    /// # Returns
-    ///
-    /// A Result containing the PackageRegistry or an error
-    ///
-    /// # Errors
-    ///
-    /// Will return an error if:
-    /// - The file cannot be read
-    /// - The file contains invalid MessagePack data
-    /// - The MessagePack data cannot be deserialized into a PackageRegistry
     pub async fn load_from_file(path: &Path) -> Result<PackageRegistry> {
         let content = tokio::fs::read(path)
             .await
@@ -162,51 +129,48 @@ impl PackageRegistry {
     }
 
     /// Retrieves a package by name, optionally filtering by root path.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The name of the package to find
-    /// * `root_path` - Optional RootPath to limit the search to a specific section
-    ///
-    /// # Returns
-    ///
-    /// An Option containing a reference to the Package if found, or None if not found
     pub fn get(&self, query: &PackageQuery) -> Option<Vec<ResolvedPackage>> {
         let pkg_name = query.name.trim();
-        let package_iterators = match query.root_path {
-            Some(RootPath::Bin) => vec![(&self.bin, RootPath::Bin)],
-            Some(RootPath::Base) => vec![(&self.base, RootPath::Base)],
-            Some(RootPath::Pkg) => vec![(&self.pkg, RootPath::Pkg)],
-            None => vec![
-                (&self.bin, RootPath::Bin),
-                (&self.base, RootPath::Base),
-                (&self.pkg, RootPath::Pkg),
-            ],
-        };
 
-        let mut variants = Vec::new();
+        let package_iterators = query
+            .root_path
+            .to_owned()
+            .map(|root_path| match root_path {
+                RootPath::Bin => vec![(&self.bin, RootPath::Bin)],
+                RootPath::Base => vec![(&self.base, RootPath::Base)],
+                RootPath::Pkg => vec![(&self.pkg, RootPath::Pkg)],
+            })
+            .unwrap_or_else(|| {
+                vec![
+                    (&self.bin, RootPath::Bin),
+                    (&self.base, RootPath::Base),
+                    (&self.pkg, RootPath::Pkg),
+                ]
+            });
 
-        for (package_map, root_path) in package_iterators {
-            if let Some(variant_map) = package_map.get(pkg_name) {
-                for (key, package) in variant_map {
-                    let root_path = root_path.clone();
-                    let resolved_package = ResolvedPackage {
-                        package: package.clone(),
-                        root_path,
-                        variant: key.clone(),
-                    };
-                    variants.push(resolved_package);
-                }
-            }
-        }
+        let pkgs: Vec<ResolvedPackage> = package_iterators
+            .iter()
+            .filter_map(|(map, root_path)| {
+                map.get(pkg_name).map(|p| {
+                    p.iter()
+                        .filter(|pkg| {
+                            pkg.name == pkg_name
+                                && (query.variant.is_none()
+                                    || pkg.variant.as_ref() == query.variant.as_ref())
+                        })
+                        .cloned()
+                        .map(|p| ResolvedPackage {
+                            package: p,
+                            root_path: root_path.to_owned(),
+                        })
+                        .collect::<Vec<ResolvedPackage>>()
+                })
+            })
+            .flatten()
+            .collect();
 
-        if let Some(ref query_variant) = query.variant {
-            variants
-                .retain(|pkg_query: &ResolvedPackage| pkg_query.variant.contains(query_variant));
-        }
-
-        if !variants.is_empty() {
-            Some(variants)
+        if !pkgs.is_empty() {
+            Some(pkgs)
         } else {
             None
         }
@@ -231,14 +195,13 @@ impl PackageRegistry {
                         ))
                     }
                     1 => &ResolvedPackage {
-                        package: packages[0].package.clone(),
-                        variant: pkg_query.variant.unwrap_or_default(),
-                        root_path: packages[0].root_path.clone(),
+                        package: packages[0].package.to_owned(),
+                        root_path: packages[0].root_path.to_owned(),
                     },
                     _ => select_package_variant(&packages)?,
                 };
 
-                Ok(package.clone())
+                Ok(package.to_owned())
             })
             .collect()
     }
@@ -246,24 +209,24 @@ impl PackageRegistry {
 
 impl Display for ResolvedPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.variant.is_empty() {
-            write!(f, "{}", self.package.name)
+        let ResolvedPackage { package, .. } = self;
+        if let Some(variant) = &package.variant {
+            write!(f, "{}/{}", variant, package.name)
         } else {
-            write!(f, "{}/{}", self.variant, self.package.name)
+            write!(f, "{}", package.name)
         }
     }
 }
 
 impl ResolvedPackage {
     pub fn install_path(&self) -> Result<PathBuf> {
-        let Self {
-            package, variant, ..
-        } = self;
-        let variant_prefix = if variant.is_empty() {
-            String::new()
-        } else {
-            format!("{}-", variant)
-        };
+        let Self { package, .. } = self;
+
+        let variant_prefix = package
+            .variant
+            .clone()
+            .map(|variant| format!("{}-", variant))
+            .unwrap_or_default();
 
         let path = build_path(&CONFIG.soar_path)?
             .join("packages")
