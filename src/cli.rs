@@ -48,7 +48,7 @@ pub enum Commands {
     #[command(name = "update", visible_alias = "u")]
     Update {
         #[arg(required = false)]
-        package: Option<Vec<String>>,
+        packages: Option<Vec<String>>,
     },
 
     /// List installed packages

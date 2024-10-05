@@ -34,9 +34,16 @@ pub async fn init() -> Result<()> {
         }
         Commands::Remove { packages } => {
             let mut installed_packages = InstalledPackages::new().await?;
-            installed_packages.remove_package(registry, &packages).await?;
-        },
-        Commands::Update { package: _ } => todo!(),
+            installed_packages
+                .remove_package(registry, &packages)
+                .await?;
+        }
+        Commands::Update { packages } => {
+            let mut installed_packages = InstalledPackages::new().await?;
+            installed_packages
+                .update_packages(registry, packages.as_deref())
+                .await?;
+        }
         Commands::ListPackages => {
             let installed_packages = InstalledPackages::new().await?;
             installed_packages.packages.iter().for_each(|package| {

@@ -65,6 +65,19 @@ impl PackageRegistry {
         }
     }
 
+    // HACK: Use the existing install process. To be updated on next refactor
+    pub async fn update_packages(&self, packages: &[ResolvedPackage], force: bool) -> Result<()> {
+        let installed_packages = Arc::new(Mutex::new(InstalledPackages::new().await?));
+
+        if CONFIG.parallel.unwrap_or_default() {
+            self.install_parallel(packages, force, installed_packages)
+                .await
+        } else {
+            self.install_sequential(packages, force, installed_packages)
+                .await
+        }
+    }
+
     async fn install_sequential(
         &self,
         packages: &[ResolvedPackage],

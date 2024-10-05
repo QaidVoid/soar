@@ -7,7 +7,10 @@ use crate::core::{
     util::build_path,
 };
 
-use super::registry::{PackageRegistry, ResolvedPackage, RootPath};
+use super::{
+    registry::{PackageRegistry, ResolvedPackage, RootPath},
+    util::PackageQuery,
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstalledPackage {
@@ -148,6 +151,54 @@ impl InstalledPackages {
                 "Package {}{} removed successfully.",
                 variant_prefix, package.package.name
             )
+        }
+
+        Ok(())
+    }
+
+    pub async fn update_packages(
+        &mut self,
+        registry: PackageRegistry,
+        package_names: Option<&[String]>,
+    ) -> Result<()> {
+        let packages = if let Some(names) = package_names {
+            registry.parse_packages_from_names(names)?
+        } else {
+            self.packages
+                .iter()
+                .filter_map(|installed| {
+                    let query = PackageQuery {
+                        name: installed.package_name.to_owned(),
+                        variant: installed.variant.to_owned(),
+                        root_path: Some(installed.root_path.to_owned()),
+                    };
+                    registry.get(&query).and_then(|v| v.into_iter().next())
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let mut packages_to_update: Vec<ResolvedPackage> = Vec::new();
+
+        for package in packages {
+            if let Some(installed_package) = self.packages.iter().find(|installed| {
+                installed.package_name == package.package.name
+                    && installed.variant == package.package.variant
+                    && installed.root_path == package.root_path
+            }) {
+                if installed_package.checksum != package.package.bsum {
+                    packages_to_update.push(package);
+                }
+            } else {
+                println!("Package {} is not installed.", package.package.name);
+            }
+        }
+
+        if packages_to_update.is_empty() {
+            println!("No updates available");
+        } else {
+            println!("Packages to update: ");
+            registry.update_packages(&packages_to_update, true).await?;
+            println!("All packages updated successfully.");
         }
 
         Ok(())
