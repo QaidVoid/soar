@@ -32,7 +32,10 @@ pub async fn init() -> Result<()> {
         Commands::Fetch => {
             PackageRegistry::fetch().await?;
         }
-        Commands::Remove { packages: _ } => todo!(),
+        Commands::Remove { packages } => {
+            let mut installed_packages = InstalledPackages::new().await?;
+            installed_packages.remove_package(registry, &packages).await?;
+        },
         Commands::Update { package: _ } => todo!(),
         Commands::ListPackages => {
             let installed_packages = InstalledPackages::new().await?;

@@ -1,9 +1,13 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::core::constant::INSTALL_TRACK_PATH;
+use crate::core::{
+    config::CONFIG,
+    constant::{BIN_PATH, INSTALL_TRACK_PATH},
+    util::build_path,
+};
 
-use super::registry::{ResolvedPackage, RootPath};
+use super::registry::{PackageRegistry, ResolvedPackage, RootPath};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstalledPackage {
@@ -48,8 +52,6 @@ impl InstalledPackages {
     }
 
     pub async fn register_package(&mut self, resolved_package: &ResolvedPackage) -> Result<()> {
-        let path = INSTALL_TRACK_PATH.join("latest");
-
         if let Some(installed) = self.find_package_mut(resolved_package) {
             installed.version = resolved_package.package.version.clone();
             installed.checksum = resolved_package.package.bsum.clone();
@@ -66,12 +68,7 @@ impl InstalledPackages {
             self.packages.push(new_installed);
         }
 
-        let content = rmp_serde::to_vec(&self)
-            .context("Failed to serialize installed packages to MessagePack")?;
-
-        tokio::fs::write(&path, content)
-            .await
-            .with_context(|| format!("Failed to write to {}", path.to_string_lossy()))?;
+        self.save().await?;
 
         Ok(())
     }
@@ -85,5 +82,87 @@ impl InstalledPackages {
                 && installed.root_path == resolved_package.root_path
                 && installed.variant == resolved_package.package.variant
         })
+    }
+
+    pub async fn remove_package(
+        &mut self,
+        registry: PackageRegistry,
+        package_names: &[String],
+    ) -> Result<()> {
+        let packages = registry.parse_packages_from_names(package_names)?;
+
+        for package in &packages {
+            let exists = self.packages.iter().any(|installed| {
+                installed.package_name == package.package.name
+                    && installed.root_path == package.root_path
+                    && installed.variant == package.package.variant
+            });
+
+            let variant_prefix = package
+                .package
+                .variant
+                .clone()
+                .map(|variant| format!("{}-", variant))
+                .unwrap_or_default();
+
+            if !exists {
+                eprintln!(
+                    "Package {}{}-{} is not installed.",
+                    variant_prefix, package.package.name, package.package.version
+                );
+                continue;
+            }
+
+            let package_path = build_path(&CONFIG.soar_path)?
+                .join("packages")
+                .join(format!(
+                    "{}{}-{}",
+                    variant_prefix, package.package.name, package.package.version
+                ));
+
+            let symlink_path = BIN_PATH.join(&package.package.bin_name);
+            if symlink_path.exists() {
+                let target = tokio::fs::read_link(&symlink_path).await?;
+                if target == package.install_path()? {
+                    tokio::fs::remove_file(&symlink_path).await?;
+                }
+            }
+
+            if package_path.exists() {
+                tokio::fs::remove_dir_all(&package_path)
+                    .await
+                    .with_context(|| {
+                        format!("Failed to remove package file: {:?}", package_path)
+                    })?;
+            }
+
+            self.packages.retain(|installed| {
+                !(installed.package_name == package.package.name
+                    && installed.root_path == package.root_path
+                    && installed.variant == package.package.variant)
+            });
+
+            // HACK: not effective but should update install tracker properly
+            self.save().await?;
+            println!(
+                "Package {}{} removed successfully.",
+                variant_prefix, package.package.name
+            )
+        }
+
+        Ok(())
+    }
+
+    async fn save(&self) -> Result<()> {
+        let path = INSTALL_TRACK_PATH.join("latest");
+
+        let content = rmp_serde::to_vec(&self)
+            .context("Failed to serialize installed packages to MessagePack")?;
+
+        tokio::fs::write(&path, content)
+            .await
+            .with_context(|| format!("Failed to write to {}", path.to_string_lossy()))?;
+
+        Ok(())
     }
 }
