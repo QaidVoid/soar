@@ -1,4 +1,5 @@
 use std::{
+    fs::Permissions,
     io::Write,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
@@ -12,14 +13,14 @@ use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::Semaphore};
 
 use crate::core::{
     config::CONFIG,
-    constant::{ERROR, PAPER, TRUCK},
+    constant::{PAPER, TRUCK},
     util::parse_size,
 };
 
 use super::{
     download_tracker::DownloadTracker,
     registry::{Package, PackageRegistry, ResolvedPackage},
-    util::{setup_symlink, verify_checksum},
+    util::{set_error, setup_symlink, verify_checksum},
 };
 
 struct InstallContext {
@@ -139,7 +140,7 @@ impl PackageRegistry {
 
         self.download_and_install_package(&ctx, package, multi_progress, tracker, index, total)
             .await?;
-        setup_symlink(&ctx.install_path, package).await?;
+        setup_symlink(&ctx.install_path, package, multi_progress).await?;
         Ok(())
     }
 
@@ -278,29 +279,17 @@ impl PackageRegistry {
         progress_bar.set_position(total_bytes);
         progress_bar.finish();
 
-        let error = multi_progress.insert_from_back(1, ProgressBar::new(0));
-
         match package.bsum == "null" {
             true => {
-                error.set_style(ProgressStyle::with_template("  {msg}").unwrap());
-                error.set_message(format!(
-                    "{ERROR} Missing checksum for {}. Installing anyway.",
-                    package.name
-                ));
-                error.finish();
-                if ctx.install_path.exists() {
-                    tokio::fs::remove_file(&ctx.install_path).await?;
-                }
-                tokio::fs::rename(&ctx.temp_file_path, &ctx.install_path).await?;
-                self.set_executable_permissions(&ctx.install_path).await?;
+                set_error(
+                    multi_progress,
+                    &format!("Missing checksum for {}. Installing anyway.", package.name),
+                );
+                self.save_file(ctx).await?;
             }
             false => {
                 if verify_checksum(&ctx.temp_file_path, package).await? {
-                    if ctx.install_path.exists() {
-                        tokio::fs::remove_file(&ctx.install_path).await?;
-                    }
-                    tokio::fs::rename(&ctx.temp_file_path, &ctx.install_path).await?;
-                    self.set_executable_permissions(&ctx.install_path).await?;
+                    self.save_file(ctx).await?;
                 } else {
                     eprint!("Checksum verification failed for {}/{}. Do you want to remove the file? (y/n): ", variant, package.name);
                     std::io::stdout().flush()?;
@@ -316,13 +305,6 @@ impl PackageRegistry {
             }
         }
 
-        Ok(())
-    }
-
-    async fn set_executable_permissions(&self, path: &Path) -> Result<()> {
-        let mut permissions = tokio::fs::metadata(path).await?.permissions();
-        permissions.set_mode(0o755);
-        tokio::fs::set_permissions(path, permissions).await?;
         Ok(())
     }
 
@@ -348,5 +330,16 @@ impl PackageRegistry {
             resolved_package
         ));
         pb
+    }
+
+    async fn save_file(&self, ctx: &InstallContext) -> Result<()> {
+        if ctx.install_path.exists() {
+            tokio::fs::remove_file(&ctx.install_path).await?;
+        }
+        tokio::fs::rename(&ctx.temp_file_path, &ctx.install_path).await?;
+        tokio::fs::set_permissions(&ctx.install_path, Permissions::from_mode(0o755)).await?;
+        xattr::set(&ctx.install_path, "user.owner", b"soar")?;
+
+        Ok(())
     }
 }

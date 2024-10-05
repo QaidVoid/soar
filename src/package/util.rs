@@ -1,15 +1,30 @@
 use std::{io::Write, path::Path};
 
 use anyhow::Result;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use tokio::{fs::File, io::AsyncReadExt};
 
-use crate::core::constant::BIN_PATH;
+use crate::core::constant::{BIN_PATH, ERROR};
 
 use super::registry::{Package, ResolvedPackage, RootPath};
 
-pub async fn setup_symlink(install_path: &Path, resolved_package: &ResolvedPackage) -> Result<()> {
+pub async fn setup_symlink(
+    install_path: &Path,
+    resolved_package: &ResolvedPackage,
+    multi_progress: &MultiProgress,
+) -> Result<()> {
     let symlink_path = BIN_PATH.join(&resolved_package.package.bin_name);
     if symlink_path.exists() {
+        if xattr::get(&symlink_path, "user.owner")?.as_deref() != Some(b"soar") {
+            set_error(
+                multi_progress,
+                &format!(
+                    "Path {} is not managed by soar. Skipping symlink.",
+                    symlink_path.to_string_lossy()
+                ),
+            );
+            return Ok(());
+        }
         tokio::fs::remove_file(&symlink_path).await?;
     }
     std::os::unix::fs::symlink(install_path, symlink_path)?;
@@ -92,4 +107,11 @@ pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedP
     };
 
     Ok(&packages[selection])
+}
+
+pub fn set_error(multi_progress: &MultiProgress, msg: &str) {
+    let error = multi_progress.insert_from_back(1, ProgressBar::new(0));
+    error.set_style(ProgressStyle::with_template("  {msg}").unwrap());
+    error.set_message(format!("{} {}", ERROR, msg.to_owned()));
+    error.finish();
 }
