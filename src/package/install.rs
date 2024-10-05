@@ -9,7 +9,11 @@ use std::{
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
-use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::Semaphore};
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::{Mutex, Semaphore},
+};
 
 use crate::core::{
     config::CONFIG,
@@ -19,6 +23,7 @@ use crate::core::{
 
 use super::{
     download_tracker::DownloadTracker,
+    install_tracker::InstalledPackages,
     registry::{Package, PackageRegistry, ResolvedPackage},
     util::{set_error, setup_symlink, verify_checksum},
 };
@@ -49,14 +54,23 @@ impl InstallContext {
 impl PackageRegistry {
     pub async fn install_packages(&self, package_names: &[String], force: bool) -> Result<()> {
         let packages = self.parse_packages_from_names(package_names)?;
+        let installed_packages = Arc::new(Mutex::new(InstalledPackages::new().await?));
+
         if CONFIG.parallel.unwrap_or_default() {
-            self.install_parallel(&packages, force).await
+            self.install_parallel(&packages, force, installed_packages)
+                .await
         } else {
-            self.install_sequential(&packages, force).await
+            self.install_sequential(&packages, force, installed_packages)
+                .await
         }
     }
 
-    async fn install_sequential(&self, packages: &[ResolvedPackage], force: bool) -> Result<()> {
+    async fn install_sequential(
+        &self,
+        packages: &[ResolvedPackage],
+        force: bool,
+        installed_packages: Arc<Mutex<InstalledPackages>>,
+    ) -> Result<()> {
         let total_packages = packages.len();
         let total_bytes = self.calculate_total_bytes(packages).await;
 
@@ -71,6 +85,7 @@ impl PackageRegistry {
                 total_packages,
                 &multi_progress,
                 tracker.clone(),
+                installed_packages.clone(),
             )
             .await?;
         }
@@ -79,7 +94,12 @@ impl PackageRegistry {
         Ok(())
     }
 
-    async fn install_parallel(&self, packages: &[ResolvedPackage], force: bool) -> Result<()> {
+    async fn install_parallel(
+        &self,
+        packages: &[ResolvedPackage],
+        force: bool,
+        installed_packages: Arc<Mutex<InstalledPackages>>,
+    ) -> Result<()> {
         let total_packages = packages.len();
         let total_bytes = self.calculate_total_bytes(packages).await;
 
@@ -96,6 +116,7 @@ impl PackageRegistry {
             let multi_progress = multi_progress.clone();
             let tracker = tracker.clone();
             let package = package.clone();
+            let installed_packages = installed_packages.clone();
 
             let handle = tokio::spawn(async move {
                 let result = registry
@@ -106,6 +127,7 @@ impl PackageRegistry {
                         total_packages,
                         &multi_progress,
                         tracker,
+                        installed_packages,
                     )
                     .await;
                 drop(permit);
@@ -131,6 +153,7 @@ impl PackageRegistry {
         total: usize,
         multi_progress: &MultiProgress,
         tracker: Arc<DownloadTracker>,
+        installed_packages: Arc<Mutex<InstalledPackages>>,
     ) -> Result<()> {
         let ctx = InstallContext::new(package).await?;
 
@@ -138,8 +161,16 @@ impl PackageRegistry {
             return Ok(());
         }
 
-        self.download_and_install_package(&ctx, package, multi_progress, tracker, index, total)
-            .await?;
+        self.download_and_install_package(
+            &ctx,
+            package,
+            multi_progress,
+            tracker,
+            index,
+            total,
+            installed_packages,
+        )
+        .await?;
         if let Err(e) = setup_symlink(&ctx.install_path, package).await {
             set_error(multi_progress, &e.to_string());
         };
@@ -183,8 +214,9 @@ impl PackageRegistry {
         tracker: Arc<DownloadTracker>,
         index: usize,
         total: usize,
+        installed_packages: Arc<Mutex<InstalledPackages>>,
     ) -> Result<()> {
-        let ResolvedPackage { package, .. } = resolved_package;
+        let package = &resolved_package.package;
         let client = reqwest::Client::new();
         let downloaded_bytes = self.get_downloaded_bytes(&ctx.temp_file_path).await?;
 
@@ -224,6 +256,14 @@ impl PackageRegistry {
             total_bytes,
         )
         .await?;
+
+        {
+            let mut installed_packages = installed_packages.lock().await;
+            installed_packages
+                .register_package(resolved_package)
+                .await?;
+        }
+
         tracker.mark_package_completed();
         Ok(())
     }
@@ -245,10 +285,7 @@ impl PackageRegistry {
     ) -> Result<reqwest::Response> {
         let response = client
             .get(&package.download_url)
-            .header(
-                "Range",
-                format!("bytes={}-", downloaded_bytes.saturating_sub(1)),
-            )
+            .header("Range", format!("bytes={}-", downloaded_bytes))
             .send()
             .await
             .context(format!("Failed to download package {}", package.name))?;

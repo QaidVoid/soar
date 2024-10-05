@@ -1,9 +1,14 @@
+// FIX: Temporary until the codebase is refactored
+#![allow(clippy::too_many_arguments)]
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use cli::{Args, Commands};
 
 use core::{config, constant::BIN_PATH};
-use package::{registry::PackageRegistry, util::parse_package_query};
+use package::{
+    install_tracker::InstalledPackages, registry::PackageRegistry, util::parse_package_query,
+};
 
 mod cli;
 mod core;
@@ -29,7 +34,20 @@ pub async fn init() -> Result<()> {
         }
         Commands::Remove { packages: _ } => todo!(),
         Commands::Update { package: _ } => todo!(),
-        Commands::ListPackages => todo!(),
+        Commands::ListPackages => {
+            let installed_packages = InstalledPackages::new().await?;
+            installed_packages.packages.iter().for_each(|package| {
+                let variant_prefix = package
+                    .variant
+                    .clone()
+                    .map(|variant| format!("{}/", variant))
+                    .unwrap_or_default();
+                println!(
+                    "- [{}] {}{}:{}",
+                    package.root_path, variant_prefix, package.package_name, package.version
+                )
+            })
+        }
         Commands::Search { query } => {
             let pkg_query = parse_package_query(&query);
             let result = registry.search(&pkg_query);

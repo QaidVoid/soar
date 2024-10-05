@@ -47,7 +47,7 @@ pub struct PackageRegistry {
 }
 
 /// Represents the different sections of the package registry.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum RootPath {
     Bin,
     Base,

@@ -1,4 +1,5 @@
 #![allow(clippy::needless_return)]
+
 use soar::init;
 
 use anyhow::Result;
