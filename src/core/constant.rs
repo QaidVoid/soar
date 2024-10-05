@@ -4,7 +4,6 @@ use console::Emoji;
 
 use super::{config::CONFIG, util::build_path};
 
-pub static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍  ", "");
 pub static TRUCK: Emoji<'_, '_> = Emoji("🚚 ", "");
 pub static CLIP: Emoji<'_, '_> = Emoji("🔗 ", "");
 pub static PAPER: Emoji<'_, '_> = Emoji("📃 ", "");

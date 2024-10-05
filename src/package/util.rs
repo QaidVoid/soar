@@ -8,10 +8,7 @@ use crate::core::constant::{BIN_PATH, ERROR};
 
 use super::registry::{Package, ResolvedPackage, RootPath};
 
-pub async fn setup_symlink(
-    install_path: &Path,
-    resolved_package: &ResolvedPackage,
-) -> Result<()> {
+pub async fn setup_symlink(install_path: &Path, resolved_package: &ResolvedPackage) -> Result<()> {
     let symlink_path = BIN_PATH.join(&resolved_package.package.bin_name);
     if symlink_path.exists() {
         let attr = xattr::get_deref(&symlink_path, "user.owner")?;
@@ -72,7 +69,6 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
         .split_once('/')
         .map(|(v, n)| (n.to_owned(), Some(v.to_owned())))
         .unwrap_or((base_query, None));
-
 
     PackageQuery {
         name,

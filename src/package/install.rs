@@ -245,7 +245,10 @@ impl PackageRegistry {
     ) -> Result<reqwest::Response> {
         let response = client
             .get(&package.download_url)
-            .header("Range", format!("bytes={}-", downloaded_bytes - 1))
+            .header(
+                "Range",
+                format!("bytes={}-", downloaded_bytes.saturating_sub(1)),
+            )
             .send()
             .await
             .context(format!("Failed to download package {}", package.name))?;

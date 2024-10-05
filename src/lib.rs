@@ -27,8 +27,8 @@ pub async fn init() -> Result<()> {
         Commands::Fetch => {
             PackageRegistry::fetch().await?;
         }
-        Commands::Remove { packages } => todo!(),
-        Commands::Update { package } => todo!(),
+        Commands::Remove { packages: _ } => todo!(),
+        Commands::Update { package: _ } => todo!(),
         Commands::ListPackages => todo!(),
         Commands::Search { query } => {
             let pkg_query = parse_package_query(&query);

@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use crate::core::{
     config::{Repository, CONFIG},
-    constant::{REGISTRY_PATH, SPARKLE, TRUCK},
+    constant::{CLIP, REGISTRY_PATH, SPARKLE},
     util::get_platform,
 };
 
@@ -83,10 +83,7 @@ impl PackageRegistry {
             ProgressStyle::with_template("{spinner:.green} {msg} [{bytes}/{total_bytes}]").unwrap(),
         );
 
-        pb.set_message(format!(
-            "{TRUCK}Fetching package registry from {}",
-            repo.url
-        ));
+        pb.set_message(format!("{CLIP}Fetching package registry from {}", repo.url));
 
         let mut downloaded_bytes = 0;
         let mut content = Vec::new();
@@ -118,7 +115,9 @@ impl PackageRegistry {
                         .filter(|v| {
                             v != ARCH && v != &platform && v != &platform.replace('-', "_")
                         });
-                    let package_entry = result.entry(package.name.to_owned()).or_insert_with(Vec::new);
+                    let package_entry = result
+                        .entry(package.name.to_owned())
+                        .or_insert_with(Vec::new);
                     package_entry.push(Package { variant, ..package });
                 }
                 result
