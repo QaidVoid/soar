@@ -14,16 +14,10 @@ use crate::core::{
 use super::registry::{Package, PackageRegistry};
 
 #[derive(Deserialize)]
-struct PlatformPackages {
-    #[serde(flatten)]
-    platforms: HashMap<String, Vec<Package>>,
-}
-
-#[derive(Deserialize)]
 struct RegistryResponse {
-    bin: PlatformPackages,
-    base: PlatformPackages,
-    pkg: PlatformPackages,
+    bin: Vec<Package>,
+    base: Vec<Package>,
+    pkg: Vec<Package>,
 }
 
 impl PackageRegistry {
@@ -100,12 +94,10 @@ impl PackageRegistry {
         let parsed: RegistryResponse =
             serde_json::from_slice(&content).context("Failed to parse registry json")?;
 
-        // Helper function to convert PlatformPackages into a flat HashMap
-        // where package names are keys and Package objects are values
         let convert_to_hashmap =
-            |platform_packages: PlatformPackages| -> HashMap<String, Vec<Package>> {
+            |packages: Vec<Package>| -> HashMap<String, Vec<Package>> {
                 let mut result = HashMap::new();
-                for package in platform_packages.platforms.into_values().flatten() {
+                for package in packages {
                     let variant = package
                         .download_url
                         .split('/')
