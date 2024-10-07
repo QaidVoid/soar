@@ -1,72 +1,56 @@
-// FIX: Temporary until the codebase is refactored
-#![allow(clippy::too_many_arguments)]
-
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
 use cli::{Args, Commands};
+use registry::{installed::InstalledPackages, PackageRegistry};
 
-use core::{config, constant::BIN_PATH};
-use package::{
-    install_tracker::InstalledPackages, registry::PackageRegistry, util::parse_package_query,
-};
+use core::{config, util::setup_required_paths};
 
 mod cli;
 mod core;
-mod package;
+mod registry;
 
 pub async fn init() -> Result<()> {
     config::init();
     let args = Args::parse();
     let registry = PackageRegistry::new().await?;
-
-    if !BIN_PATH.exists() {
-        tokio::fs::create_dir_all(&*BIN_PATH)
-            .await
-            .context(format!("Failed to create bin directory {:#?}", BIN_PATH))?;
-    }
+    setup_required_paths().await?;
 
     match args.command {
         Commands::Install { packages, force } => {
-            registry.install_packages(&packages, force).await?;
+            registry.install_packages(&packages, force, false).await?;
         }
         Commands::Fetch => {
-            PackageRegistry::fetch().await?;
+            let mut registry = registry;
+            registry.fetch().await?;
         }
         Commands::Remove { packages } => {
-            let mut installed_packages = InstalledPackages::new().await?;
-            installed_packages
-                .remove_package(registry, &packages)
-                .await?;
+            registry.remove_packages(&packages).await?;
         }
         Commands::Update { packages } => {
-            let mut installed_packages = InstalledPackages::new().await?;
-            installed_packages
-                .update_packages(registry, packages.as_deref())
-                .await?;
+            registry.update(packages.as_deref()).await?;
         }
         Commands::ListPackages => {
             let installed_packages = InstalledPackages::new().await?;
             installed_packages.packages.iter().for_each(|package| {
-                let variant_prefix = package
-                    .variant
-                    .clone()
-                    .map(|variant| format!("{}/", variant))
-                    .unwrap_or_default();
                 println!(
-                    "- [{}] {}{}:{}",
-                    package.root_path, variant_prefix, package.package_name, package.version
+                    "- [{}] {}:{}",
+                    package.root_path, package.name, package.version
                 )
             })
         }
         Commands::Search { query } => {
-            let pkg_query = parse_package_query(&query);
-            let result = registry.search(&pkg_query);
+            let result = registry.search(&query).await;
 
             if result.is_empty() {
                 println!("No packages found");
             } else {
                 result.iter().for_each(|pkg| {
-                    println!("[{}] {}: {}", pkg.root_path, pkg, pkg.package.description);
+                    println!(
+                        "[{}] {}: {}",
+                        pkg.root_path,
+                        pkg.package.full_name(),
+                        pkg.package.description
+                    );
                 })
             }
         }

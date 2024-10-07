@@ -3,10 +3,16 @@ use std::{
         self,
         consts::{ARCH, OS},
     },
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
+use tokio::{
+    fs::{self, File},
+    io::AsyncReadExt,
+};
+
+use super::constant::{BIN_PATH, INSTALL_TRACK_PATH};
 
 /// Expands the environment variables and user home directory in a given path.
 pub fn build_path(path: &str) -> Result<PathBuf> {
@@ -64,7 +70,7 @@ pub fn format_bytes(bytes: u64) -> String {
     }
 }
 
-pub fn parse_size(size_str: &str) -> Option<u64> {
+pub fn _parse_size(size_str: &str) -> Option<u64> {
     let size_str = size_str.trim();
     let units = [
         ("B", 1u64),
@@ -83,4 +89,45 @@ pub fn parse_size(size_str: &str) -> Option<u64> {
     }
 
     None
+}
+
+pub async fn validate_checksum(checksum: &str, file_path: &Path) -> Result<()> {
+    let mut file = File::open(&file_path).await?;
+
+    let mut hasher = blake3::Hasher::new();
+    let mut buffer = [0u8; 8192];
+
+    while let Ok(n) = file.read(&mut buffer).await {
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+
+    let final_checksum = hasher.finalize().to_hex().to_string();
+    if final_checksum == *checksum {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("Checksum verification failed."))
+    }
+}
+
+pub async fn setup_required_paths() -> Result<()> {
+    if !BIN_PATH.exists() {
+        fs::create_dir_all(&*BIN_PATH).await.context(format!(
+            "Failed to create bin directory {}",
+            BIN_PATH.to_string_lossy()
+        ))?;
+    }
+
+    if !INSTALL_TRACK_PATH.exists() {
+        fs::create_dir_all(&*INSTALL_TRACK_PATH)
+            .await
+            .context(format!(
+                "Failed to create path: {}",
+                INSTALL_TRACK_PATH.to_string_lossy()
+            ))?;
+    }
+
+    Ok(())
 }

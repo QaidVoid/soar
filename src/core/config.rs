@@ -2,6 +2,8 @@ use std::{env, fs, path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
+use super::constant::REGISTRY_PATH;
+
 /// Application's configuration
 #[derive(Deserialize, Serialize)]
 pub struct Config {
@@ -30,6 +32,12 @@ pub struct Repository {
     /// Optional field specifying a custom registry file for the repository. Default:
     /// `metadata.json`
     pub registry: Option<String>,
+}
+
+impl Repository {
+    pub fn get_path(&self) -> PathBuf {
+        REGISTRY_PATH.join(&self.name)
+    }
 }
 
 impl Config {
