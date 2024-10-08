@@ -4,10 +4,7 @@ use tokio::fs;
 
 use crate::core::constant::INSTALL_TRACK_PATH;
 
-use super::{
-    package::{update::Updater, ResolvedPackage, RootPath},
-    PackageRegistry,
-};
+use super::package::{ResolvedPackage, RootPath};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstalledPackage {
@@ -108,16 +105,6 @@ impl InstalledPackages {
 
         self.save().await?;
 
-        Ok(())
-    }
-
-    pub async fn update(
-        &self,
-        registry: &PackageRegistry,
-        package_names: Option<&[String]>,
-    ) -> Result<()> {
-        let updater = Updater::new(package_names);
-        updater.execute(registry).await?;
         Ok(())
     }
 

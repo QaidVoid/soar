@@ -1,6 +1,7 @@
 use anyhow::Result;
+use tokio::sync::MutexGuard;
 
-use crate::registry::PackageRegistry;
+use crate::registry::{installed::InstalledPackages, PackageRegistry};
 
 use super::{parse_package_query, PackageQuery, ResolvedPackage};
 
@@ -15,16 +16,20 @@ impl Updater {
         }
     }
 
-    pub async fn execute(&self, registry: &PackageRegistry) -> Result<()> {
+    pub async fn execute(
+        &self,
+        registry: &PackageRegistry,
+        installed_packages: &mut MutexGuard<'_, InstalledPackages>,
+    ) -> Result<()> {
         let packages = match &self.package_names {
-            Some(r) => r
-                .iter()
-                .filter_map(|package_name| registry.storage.resolve_package(package_name).ok())
-                .collect(),
-            None => registry
-                .installed_packages
-                .lock()
-                .await
+            Some(r) => {
+                let resolved_packages: Result<Vec<ResolvedPackage>> = r
+                    .iter()
+                    .map(|package_name| registry.storage.resolve_package(package_name))
+                    .collect();
+                resolved_packages?
+            }
+            None => installed_packages
                 .packages
                 .iter()
                 .filter_map(|installed| {
@@ -44,17 +49,11 @@ impl Updater {
         let mut packages_to_update: Vec<ResolvedPackage> = Vec::new();
 
         for package in packages {
-            if let Some(installed_package) = registry
-                .installed_packages
-                .lock()
-                .await
-                .packages
-                .iter()
-                .find(|installed| {
-                    installed.name == package.package.full_name()
-                        && installed.root_path == package.root_path
-                })
-            {
+            if let Some(installed_package) = installed_packages.packages.iter().find(|installed| {
+                installed.repo_name == package.repo_name
+                    && installed.name == package.package.full_name()
+                    && installed.root_path == package.root_path
+            }) {
                 if installed_package.checksum != package.package.bsum {
                     packages_to_update.push(package);
                 }
@@ -64,7 +63,7 @@ impl Updater {
         }
 
         if packages_to_update.is_empty() {
-            println!("No updates available");
+            eprintln!("No updates available");
         } else {
             let mut update_count = 0;
             for (idx, package) in packages_to_update.iter().enumerate() {

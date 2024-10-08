@@ -5,7 +5,7 @@ use anyhow::Result;
 use fetcher::RegistryFetcher;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
-use package::ResolvedPackage;
+use package::{update::Updater, ResolvedPackage};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use tokio::sync::Mutex;
@@ -82,7 +82,12 @@ impl PackageRegistry {
         is_update: bool,
     ) -> Result<()> {
         self.storage
-            .install_packages(package_names, force, is_update, self.installed_packages.clone())
+            .install_packages(
+                package_names,
+                force,
+                is_update,
+                self.installed_packages.clone(),
+            )
             .await
     }
 
@@ -95,7 +100,9 @@ impl PackageRegistry {
     }
 
     pub async fn update(&self, package_names: Option<&[String]>) -> Result<()> {
-        self.installed_packages.lock().await.update(self, package_names).await
+        let mut installed_guard = self.installed_packages.lock().await;
+        let updater = Updater::new(package_names);
+        updater.execute(self, &mut installed_guard).await
     }
 }
 

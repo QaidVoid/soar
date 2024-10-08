@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::{atomic::{AtomicU64, Ordering}, Arc},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use anyhow::Result;
@@ -72,10 +75,11 @@ impl PackageStorage {
         is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
     ) -> Result<()> {
-        let resolved_packages: Vec<ResolvedPackage> = package_names
+        let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
             .iter()
-            .filter_map(|package_name| self.resolve_package(package_name).ok())
+            .map(|package_name| self.resolve_package(package_name))
             .collect();
+        let resolved_packages = resolved_packages?;
 
         let installed_count = Arc::new(AtomicU64::new(0));
         if CONFIG.parallel.unwrap_or_default() {
