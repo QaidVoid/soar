@@ -1,12 +1,23 @@
 use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
-use crate::core::constant::INSTALL_TRACK_PATH;
+use crate::{
+    core::{
+        config::CONFIG,
+        constant::INSTALL_TRACK_PATH,
+        util::{build_path, format_bytes, parse_size},
+    },
+    registry::package::parse_package_query,
+};
 
-use super::package::{ResolvedPackage, RootPath};
+use super::{
+    package::{ResolvedPackage, RootPath},
+    storage::PackageStorage,
+};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InstalledPackage {
     pub repo_name: String,
     pub root_path: RootPath,
@@ -14,6 +25,8 @@ pub struct InstalledPackage {
     pub bin_name: String,
     pub version: String,
     pub checksum: String,
+    pub size: u64,
+    pub timestamp: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -64,6 +77,14 @@ impl InstalledPackages {
         })
     }
 
+    fn find_package(&self, package: &ResolvedPackage) -> Option<&InstalledPackage> {
+        self.packages.iter().find(|installed| {
+            installed.repo_name == package.repo_name
+                && installed.root_path == package.root_path
+                && installed.name == package.package.full_name()
+        })
+    }
+
     pub async fn register_package(&mut self, resolved_package: &ResolvedPackage) -> Result<()> {
         let package = resolved_package.package.to_owned();
         if let Some(installed) = self.find_package_mut(resolved_package) {
@@ -77,6 +98,8 @@ impl InstalledPackages {
                 bin_name: package.bin_name,
                 version: package.version,
                 checksum: package.bsum,
+                size: parse_size(&package.size).unwrap_or_default(),
+                timestamp: Utc::now(),
             };
             self.packages.push(new_installed);
         }
@@ -117,6 +140,83 @@ impl InstalledPackages {
         fs::write(&path, content)
             .await
             .context(format!("Failed to write to {}", path.to_string_lossy()))?;
+
+        Ok(())
+    }
+
+    pub async fn info(
+        &self,
+        packages: Option<&[String]>,
+        package_store: PackageStorage,
+    ) -> Result<()> {
+        let mut total_base = (0, 0);
+        let mut total_bin = (0, 0);
+        let mut total_pkg = (0, 0);
+        let mut total = (0, 0);
+
+        let resolved_packages = packages
+            .map(|pkgs| {
+                pkgs.iter()
+                    .flat_map(|package| {
+                        let query = parse_package_query(package);
+                        package_store
+                            .get_packages(&query)
+                            .unwrap_or_default()
+                            .into_iter()
+                            .filter_map(|package| self.find_package(&package).cloned())
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| self.packages.clone());
+
+        if resolved_packages.is_empty() {
+            return Err(anyhow::anyhow!("No installed packages"));
+        }
+
+        resolved_packages.iter().for_each(|package| {
+            println!(
+                "- [{}] {}:{}-{} ({}/{}-{}/bin) ({})",
+                package.root_path,
+                package.name,
+                package.name,
+                package.version,
+                build_path(&CONFIG.soar_path)
+                    .unwrap()
+                    .join("packages")
+                    .to_string_lossy(),
+                package.name,
+                package.version,
+                format_bytes(package.size)
+            );
+
+            match package.root_path {
+                RootPath::Bin => total_bin = (total_bin.0 + 1, total_bin.1 + package.size),
+                RootPath::Base => total_base = (total_base.0 + 1, total_base.1 + package.size),
+                RootPath::Pkg => total_pkg = (total_pkg.0 + 1, total_pkg.1 + package.size),
+            }
+            total = (total.0 + 1, total.1 + package.size);
+        });
+        println!();
+        println!("{:<2} Installed:", "");
+        println!(
+            "{:<4} base: {} ({})",
+            "",
+            total_base.0,
+            format_bytes(total_base.1)
+        );
+        println!(
+            "{:<4} bin: {} ({})",
+            "",
+            total_bin.0,
+            format_bytes(total_bin.1)
+        );
+        println!(
+            "{:<4} pkg: {} ({})",
+            "",
+            total_pkg.0,
+            format_bytes(total_pkg.1)
+        );
+        println!("{:<4} Total: {} ({})", "", total.0, format_bytes(total.1));
 
         Ok(())
     }

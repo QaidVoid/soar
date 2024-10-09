@@ -15,13 +15,13 @@ use crate::core::config::CONFIG;
 mod fetcher;
 pub mod installed;
 mod loader;
-mod package;
+pub mod package;
 mod storage;
 
 pub struct PackageRegistry {
     fetcher: RegistryFetcher,
-    storage: PackageStorage,
-    installed_packages: Arc<Mutex<InstalledPackages>>,
+    pub storage: PackageStorage,
+    pub installed_packages: Arc<Mutex<InstalledPackages>>,
 }
 
 impl PackageRegistry {

@@ -51,7 +51,10 @@ pub enum Commands {
         packages: Option<Vec<String>>,
     },
 
-    /// List installed packages
-    #[command(name = "list")]
-    ListPackages,
+    /// Show info about installed packages
+    #[command(name = "info")]
+    ListInstalledPackages {
+        #[arg(required = false)]
+        packages: Option<Vec<String>>,
+    },
 }

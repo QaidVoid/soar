@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use cli::{Args, Commands};
-use registry::{installed::InstalledPackages, PackageRegistry};
+use registry::PackageRegistry;
 
 use core::{config, util::setup_required_paths};
 
@@ -29,14 +29,13 @@ pub async fn init() -> Result<()> {
         Commands::Update { packages } => {
             registry.update(packages.as_deref()).await?;
         }
-        Commands::ListPackages => {
-            let installed_packages = InstalledPackages::new().await?;
-            installed_packages.packages.iter().for_each(|package| {
-                println!(
-                    "- [{}] {}:{}",
-                    package.root_path, package.name, package.version
-                )
-            })
+        Commands::ListInstalledPackages { packages } => {
+            registry
+                .installed_packages
+                .lock()
+                .await
+                .info(packages.as_deref(), registry.storage)
+                .await?;
         }
         Commands::Search { query } => {
             let result = registry.search(&query).await;

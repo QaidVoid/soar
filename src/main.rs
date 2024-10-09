@@ -2,9 +2,9 @@
 
 use soar::init;
 
-use anyhow::Result;
-
 #[tokio::main]
-async fn main() -> Result<()> {
-    init().await
+async fn main() {
+    if let Err(e) = init().await {
+        eprintln!("{}", e);
+    }
 }

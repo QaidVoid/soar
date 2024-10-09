@@ -63,23 +63,24 @@ pub fn format_bytes(bytes: u64) -> String {
     let gb = mb * 1024;
 
     match bytes {
-        b if b >= gb => format!("{:.2} GB", b as f64 / gb as f64),
-        b if b >= mb => format!("{:.2} MB", b as f64 / mb as f64),
-        b if b >= kb => format!("{:.2} KB", b as f64 / kb as f64),
+        b if b >= gb => format!("{:.2} GiB", b as f64 / gb as f64),
+        b if b >= mb => format!("{:.2} MiB", b as f64 / mb as f64),
+        b if b >= kb => format!("{:.2} KiB", b as f64 / kb as f64),
         _ => format!("{} B", bytes),
     }
 }
 
-pub fn _parse_size(size_str: &str) -> Option<u64> {
+pub fn parse_size(size_str: &str) -> Option<u64> {
     let size_str = size_str.trim();
     let units = [
         ("B", 1u64),
-        ("KB", 1000u64),
-        ("MB", 1000u64 * 1000),
-        ("GB", 1000u64 * 1000 * 1000),
+        ("KB", 1024u64),
+        ("MB", 1024u64 * 1024),
+        ("GB", 1024u64 * 1024 * 1024),
     ];
 
     for (unit, multiplier) in &units {
+        let size_str = size_str.to_uppercase();
         if size_str.ends_with(unit) {
             let number_part = size_str.trim_end_matches(unit).trim();
             if let Ok(num) = number_part.parse::<f64>() {
