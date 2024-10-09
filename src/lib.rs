@@ -30,28 +30,14 @@ pub async fn init() -> Result<()> {
             registry.update(packages.as_deref()).await?;
         }
         Commands::ListInstalledPackages { packages } => {
-            registry
-                .installed_packages
-                .lock()
-                .await
-                .info(packages.as_deref(), registry.storage)
-                .await?;
+            registry.info(packages.as_deref()).await?;
         }
         Commands::Search { query } => {
-            let result = registry.search(&query).await;
+            registry.search(&query).await?;
 
-            if result.is_empty() {
-                println!("No packages found");
-            } else {
-                result.iter().for_each(|pkg| {
-                    println!(
-                        "[{}] {}: {}",
-                        pkg.root_path,
-                        pkg.package.full_name(),
-                        pkg.package.description
-                    );
-                })
-            }
+        }
+        Commands::ListPackages { root_path } => {
+            registry.list(root_path.as_deref())?;
         }
     };
 

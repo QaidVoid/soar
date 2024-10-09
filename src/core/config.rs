@@ -71,7 +71,7 @@ impl Config {
             soar_path: "$HOME/.soar".to_owned(),
             repositories: vec![Repository {
                 name: "ajam".to_owned(),
-                url: "https://pkg.ajam.dev".to_owned(),
+                url: "https://bin.ajam.dev".to_owned(),
                 registry: Some("METADATA.AIO.json".to_owned()),
             }],
             parallel: Some(true),

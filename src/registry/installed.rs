@@ -144,10 +144,10 @@ impl InstalledPackages {
         Ok(())
     }
 
-    pub async fn info(
+    pub fn info(
         &self,
         packages: Option<&[String]>,
-        package_store: PackageStorage,
+        package_store: &PackageStorage,
     ) -> Result<()> {
         let mut total_base = (0, 0);
         let mut total_bin = (0, 0);

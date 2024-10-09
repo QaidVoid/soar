@@ -5,7 +5,7 @@ use anyhow::Result;
 use fetcher::RegistryFetcher;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
-use package::{update::Updater, ResolvedPackage};
+use package::{update::Updater, ResolvedPackage, RootPath};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use tokio::sync::Mutex;
@@ -95,14 +95,59 @@ impl PackageRegistry {
         self.storage.remove_packages(package_names).await
     }
 
-    pub async fn search(&self, package_name: &str) -> Vec<ResolvedPackage> {
-        self.storage.search(package_name).await
+    pub async fn search(&self, package_name: &str) -> Result<()> {
+        let result = self.storage.search(package_name).await;
+
+        if result.is_empty() {
+            Err(anyhow::anyhow!("No packages found"))
+        } else {
+            result.iter().for_each(|pkg| {
+                println!(
+                    "[{}] {}: {}",
+                    pkg.root_path,
+                    pkg.package.full_name(),
+                    pkg.package.description
+                );
+            });
+            Ok(())
+        }
     }
 
     pub async fn update(&self, package_names: Option<&[String]>) -> Result<()> {
         let mut installed_guard = self.installed_packages.lock().await;
         let updater = Updater::new(package_names);
         updater.execute(self, &mut installed_guard).await
+    }
+
+    pub async fn info(&self, package_names: Option<&[String]>) -> Result<()> {
+        let installed_guard = self.installed_packages.lock().await;
+        installed_guard.info(package_names, &self.storage)
+    }
+
+    pub fn list(&self, root_path: Option<&str>) -> Result<()> {
+        let root_path = match root_path {
+            Some(rp) => match rp.to_lowercase().as_str() {
+                "base" => Ok(Some(RootPath::Base)),
+                "bin" => Ok(Some(RootPath::Bin)),
+                "pkg" => Ok(Some(RootPath::Pkg)),
+                _ => Err(anyhow::anyhow!("Invalid root path: {}", rp)),
+            },
+            None => Ok(None),
+        }?;
+
+        let packages = self.storage.list_packages(root_path);
+        packages.iter().for_each(|resolved_package| {
+            let package = resolved_package.package.clone();
+            println!(
+                "- [{}] {}:{}-{} ({})",
+                resolved_package.root_path,
+                package.name,
+                package.name,
+                package.version,
+                package.size
+            );
+        });
+        Ok(())
     }
 }
 

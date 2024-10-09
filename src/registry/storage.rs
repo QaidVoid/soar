@@ -147,6 +147,37 @@ impl PackageStorage {
         Ok(())
     }
 
+    pub fn list_packages(&self, root_path: Option<RootPath>) -> Vec<ResolvedPackage> {
+        self.repository
+            .iter()
+            .flat_map(|(repo_name, repo_packages)| {
+                let package_iterators = match root_path {
+                    Some(ref path) => match path {
+                        RootPath::Bin => vec![(&repo_packages.bin, RootPath::Bin)],
+                        RootPath::Base => vec![(&repo_packages.base, RootPath::Base)],
+                        RootPath::Pkg => vec![(&repo_packages.pkg, RootPath::Pkg)],
+                    },
+                    None => vec![
+                        (&repo_packages.bin, RootPath::Bin),
+                        (&repo_packages.base, RootPath::Base),
+                        (&repo_packages.pkg, RootPath::Pkg),
+                    ],
+                };
+
+                package_iterators.into_iter().flat_map(move |(map, path)| {
+                    map.iter().flat_map(move |(_, packages)| {
+                        let value = path.clone();
+                        packages.iter().map(move |package| ResolvedPackage {
+                            repo_name: repo_name.clone(),
+                            root_path: value.clone(),
+                            package: package.clone(),
+                        })
+                    })
+                })
+            })
+            .collect::<Vec<_>>()
+    }
+
     pub fn get_packages(&self, query: &PackageQuery) -> Option<Vec<ResolvedPackage>> {
         let pkg_name = query.name.trim();
 

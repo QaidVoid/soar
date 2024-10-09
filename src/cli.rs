@@ -57,4 +57,11 @@ pub enum Commands {
         #[arg(required = false)]
         packages: Option<Vec<String>>,
     },
+
+    /// List all available packages
+    #[command(name = "list")]
+    ListPackages {
+        #[arg(required = false)]
+        root_path: Option<String>,
+    },
 }
