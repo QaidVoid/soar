@@ -1,4 +1,4 @@
-use std::{io::Write, sync::Arc};
+use std::{fmt::Display, io::Write, sync::Arc};
 
 use anyhow::Result;
 
@@ -96,19 +96,74 @@ impl PackageRegistry {
     }
 
     pub async fn search(&self, package_name: &str) -> Result<()> {
+        let installed_guard = self.installed_packages.lock().await;
         let result = self.storage.search(package_name).await;
 
         if result.is_empty() {
             Err(anyhow::anyhow!("No packages found"))
         } else {
             result.iter().for_each(|pkg| {
+                let installed = if installed_guard.is_installed(pkg) {
+                    "[Installed]"
+                } else {
+                    ""
+                };
                 println!(
-                    "[{}] {}: {}",
+                    "[{}] {}: {} {}",
                     pkg.root_path,
                     pkg.package.full_name(),
-                    pkg.package.description
+                    pkg.package.description,
+                    installed
                 );
             });
+            Ok(())
+        }
+    }
+
+    pub async fn query(&self, package_name: &str) -> Result<()> {
+        let installed_guard = self.installed_packages.lock().await;
+        let result = self.storage.search(package_name).await;
+
+        if result.is_empty() {
+            Err(anyhow::anyhow!("No packages found"))
+        } else {
+            for pkg in result {
+                let installed_pkg = installed_guard.find_package(&pkg);
+                let print_data = |key: &str, value: &dyn Display| {
+                    println!("{:<16}: {}", key, value);
+                };
+                let data: Vec<(&str, &dyn Display)> = vec![
+                    ("Root Path", &pkg.root_path),
+                    ("Name", &pkg.package.name),
+                    ("Binary", &pkg.package.bin_name),
+                    ("Description", &pkg.package.description),
+                    ("Version", &pkg.package.version),
+                    ("Download URL", &pkg.package.download_url),
+                    ("Size", &pkg.package.size),
+                    ("Checksum", &pkg.package.bsum),
+                    ("Build Date", &pkg.package.build_date),
+                    ("Build Log", &pkg.package.build_log),
+                    ("Build Script", &pkg.package.build_script),
+                    ("Category", &pkg.package.category),
+                    ("Extra Bins", &pkg.package.extra_bins),
+                ];
+
+                data.iter().for_each(|(k, v)| {
+                    print_data(k, v);
+                });
+
+                if let Some(installed) = installed_pkg {
+                    print_data(
+                        "Install Path",
+                        &pkg.package.get_install_path()?.to_string_lossy(),
+                    );
+                    print_data(
+                        "Install Date",
+                        &installed.timestamp.format("%Y-%m-%d %H:%M:%S"),
+                    );
+                }
+                println!();
+            }
             Ok(())
         }
     }

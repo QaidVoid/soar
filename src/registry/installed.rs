@@ -77,7 +77,7 @@ impl InstalledPackages {
         })
     }
 
-    fn find_package(&self, package: &ResolvedPackage) -> Option<&InstalledPackage> {
+    pub fn find_package(&self, package: &ResolvedPackage) -> Option<&InstalledPackage> {
         self.packages.iter().find(|installed| {
             installed.repo_name == package.repo_name
                 && installed.root_path == package.root_path
@@ -144,11 +144,7 @@ impl InstalledPackages {
         Ok(())
     }
 
-    pub fn info(
-        &self,
-        packages: Option<&[String]>,
-        package_store: &PackageStorage,
-    ) -> Result<()> {
+    pub fn info(&self, packages: Option<&[String]>, package_store: &PackageStorage) -> Result<()> {
         let mut total_base = (0, 0);
         let mut total_bin = (0, 0);
         let mut total_pkg = (0, 0);

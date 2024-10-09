@@ -25,9 +25,18 @@ pub enum Commands {
         force: bool,
     },
 
+    /// Search package
     #[command(arg_required_else_help = true)]
     #[clap(name = "search", visible_alias = "s")]
     Search {
+        #[arg(required = true)]
+        query: String,
+    },
+
+    /// Query package info
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "query", visible_alias = "Q")]
+    Query {
         #[arg(required = true)]
         query: String,
     },

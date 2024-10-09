@@ -34,7 +34,9 @@ pub async fn init() -> Result<()> {
         }
         Commands::Search { query } => {
             registry.search(&query).await?;
-
+        }
+        Commands::Query { query } => {
+            registry.query(&query).await?;
         }
         Commands::ListPackages { root_path } => {
             registry.list(root_path.as_deref())?;
