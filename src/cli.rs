@@ -73,4 +73,10 @@ pub enum Commands {
         #[arg(required = false)]
         root_path: Option<String>,
     },
+
+    /// Inspect package build log
+    Inspect {
+        #[arg(required = true)]
+        package: String
+    }
 }

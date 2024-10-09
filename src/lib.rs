@@ -41,6 +41,9 @@ pub async fn init() -> Result<()> {
         Commands::ListPackages { root_path } => {
             registry.list(root_path.as_deref())?;
         }
+        Commands::Inspect { package } => {
+            registry.inspect(&package).await?;
+        },
     };
 
     Ok(())

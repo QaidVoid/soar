@@ -1,13 +1,12 @@
 use std::{collections::HashMap, env::consts::ARCH};
 
 use anyhow::{Context, Result};
-use futures::StreamExt;
 use serde::Deserialize;
 use tokio::fs;
 
 use crate::core::{
     config::Repository,
-    util::{format_bytes, get_platform},
+    util::{download, get_platform},
 };
 
 use super::{package::Package, storage::RepositoryPackages};
@@ -38,7 +37,7 @@ impl RegistryFetcher {
                 .unwrap_or("metadata.json".to_owned())
         );
 
-        let content = self.download(url).await?;
+        let content = download(&url, "registry").await?;
 
         let parsed: RepositoryResponse =
             serde_json::from_slice(&content).context("Failed to parse registry json")?;
@@ -80,32 +79,6 @@ impl RegistryFetcher {
         fs::write(&path, &content)
             .await
             .with_context(|| format!("Failed to write registry for {}", repository.name))?;
-
-        Ok(content)
-    }
-
-    pub async fn download(&self, url: String) -> Result<Vec<u8>> {
-        let client = reqwest::Client::new();
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .context("Failed to fetch repository")?;
-
-        let mut content = Vec::new();
-
-        println!(
-            "Fetching {} [{}]",
-            url,
-            format_bytes(response.content_length().unwrap_or_default())
-        );
-
-        let mut stream = response.bytes_stream();
-
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.context("Failed to read chunk")?;
-            content.extend_from_slice(&chunk);
-        }
 
         Ok(content)
     }

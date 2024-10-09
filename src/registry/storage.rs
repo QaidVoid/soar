@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, Semaphore};
 
 use crate::{
-    core::config::CONFIG,
+    core::{config::CONFIG, util::download},
     registry::{
         installed::InstalledPackages,
         package::{parse_package_query, ResolvedPackage},
@@ -301,5 +301,15 @@ impl PackageStorage {
             .collect();
 
         pkgs
+    }
+
+    pub async fn inspect(&self, package_name: &str) -> Result<()> {
+        let resolved_pkg = self.resolve_package(package_name)?;
+        let log = download(&resolved_pkg.package.build_log, "log").await?;
+        let log_str = String::from_utf8_lossy(&log).replace("\r", "\n");
+
+        println!("\n{}", log_str);
+
+        Ok(())
     }
 }

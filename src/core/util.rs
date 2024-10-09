@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use futures::StreamExt;
 use tokio::{
     fs::{self, File},
     io::AsyncReadExt,
@@ -131,4 +132,27 @@ pub async fn setup_required_paths() -> Result<()> {
     }
 
     Ok(())
+}
+
+pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
+    let client = reqwest::Client::new();
+    let response = client.get(url).send().await?;
+
+    let mut content = Vec::new();
+
+    println!(
+        "Fetching {} from {} [{}]",
+        what,
+        url,
+        format_bytes(response.content_length().unwrap_or_default())
+    );
+
+    let mut stream = response.bytes_stream();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.context("Failed to read chunk")?;
+        content.extend_from_slice(&chunk);
+    }
+
+    Ok(content)
 }
