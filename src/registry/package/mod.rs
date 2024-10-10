@@ -1,18 +1,13 @@
 mod install;
 mod remove;
-mod run;
+pub mod run;
 pub mod update;
 
-use std::{
-    fmt::Display,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{fmt::Display, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use install::Installer;
 use remove::Remover;
-use run::Runner;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -20,7 +15,7 @@ use crate::core::constant::PACKAGES_PATH;
 
 use super::installed::InstalledPackages;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Package {
     pub name: String,
     pub bin_name: String,
@@ -39,7 +34,7 @@ pub struct Package {
     pub variant: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct ResolvedPackage {
     pub repo_name: String,
     pub root_path: RootPath,
@@ -67,13 +62,6 @@ impl ResolvedPackage {
         let remover = Remover::new(self).await?;
         let mut installed_packages = InstalledPackages::new().await?;
         remover.execute(&mut installed_packages).await?;
-        Ok(())
-    }
-
-    pub async fn run(&self, args: &[String], cache_dir: &Path) -> Result<()> {
-        let package_path = cache_dir.join(&self.package.bin_name);
-        let runner = Runner::new(self, package_path, args);
-        runner.execute().await?;
         Ok(())
     }
 }
@@ -106,8 +94,9 @@ pub struct PackageQuery {
     pub root_path: Option<RootPath>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum RootPath {
+    #[default]
     Bin,
     Base,
     Pkg,

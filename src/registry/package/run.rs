@@ -1,6 +1,4 @@
-use std::{
-    fs::Permissions, io::Write, os::unix::fs::PermissionsExt, path::PathBuf, process::Command,
-};
+use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf, process::Command};
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
@@ -40,14 +38,7 @@ impl Runner {
                 ));
             } else {
                 println!("Found existing cache for {}", package_name);
-                let result = validate_checksum(&package.bsum, &self.install_path).await;
-                if result.is_err() {
-                    eprintln!("Checksum validation failed for {}", package_name);
-                    eprintln!("The package will be re-downloaded.");
-                } else {
-                    self.run().await?;
-                    return Ok(());
-                }
+                return self.run().await;
             }
         }
 
@@ -112,19 +103,7 @@ impl Runner {
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
             if result.is_err() {
-                eprint!(
-                    "\n{}: Checksum verification failed. Do you want to remove the package? (y/n): ",
-                    package_name
-                );
-                std::io::stdout().flush()?;
-
-                let mut response = String::new();
-                std::io::stdin().read_line(&mut response)?;
-
-                if response.trim().eq_ignore_ascii_case("y") {
-                    tokio::fs::remove_file(&self.temp_path).await?;
-                    return Err(anyhow::anyhow!(""));
-                }
+                eprint!("\n{}: Checksum verification failed.", package_name);
             }
         }
 
