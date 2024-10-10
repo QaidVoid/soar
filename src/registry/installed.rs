@@ -148,7 +148,11 @@ impl InstalledPackages {
         Ok(())
     }
 
-    pub fn info(&self, packages: Option<&[String]>, package_store: &PackageStorage) -> Result<()> {
+    pub async fn info(
+        &self,
+        packages: Option<&[String]>,
+        package_store: &PackageStorage,
+    ) -> Result<()> {
         let mut total_base = (0, 0);
         let mut total_bin = (0, 0);
         let mut total_pkg = (0, 0);
@@ -175,13 +179,12 @@ impl InstalledPackages {
 
         resolved_packages.iter().for_each(|package| {
             println!(
-                "- [{}] {}:{}-{} ({}-{}/bin) ({})",
+                "- [{}] {}:{}-{} ({}) ({})",
                 package.root_path,
                 package.name,
                 package.name,
                 package.version,
-                package.checksum,
-                package.name,
+                package.timestamp.format("%Y-%m-%d %H:%M:%S"),
                 format_bytes(package.size)
             );
 
@@ -212,7 +215,7 @@ impl InstalledPackages {
             total_pkg.0,
             format_bytes(total_pkg.1)
         );
-        println!("{:<4} Total: {} ({})", "", total.0, format_bytes(total.1));
+        println!("{:<2} Total: {} ({})", "", total.0, format_bytes(total.1));
 
         Ok(())
     }

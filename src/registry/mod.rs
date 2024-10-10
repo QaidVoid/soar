@@ -5,7 +5,7 @@ use anyhow::Result;
 use fetcher::RegistryFetcher;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
-use package::{update::Updater, ResolvedPackage, RootPath};
+use package::{parse_package_query, update::Updater, ResolvedPackage, RootPath};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use tokio::sync::Mutex;
@@ -104,16 +104,16 @@ impl PackageRegistry {
         } else {
             result.iter().for_each(|pkg| {
                 let installed = if installed_guard.is_installed(pkg) {
-                    "[Installed]"
+                    "+"
                 } else {
-                    ""
+                    "-"
                 };
                 println!(
-                    "[{}] {}: {} {}",
+                    "[{}] [{}] {}: {}",
+                    installed,
                     pkg.root_path,
                     pkg.package.full_name('/'),
                     pkg.package.description,
-                    installed
                 );
             });
             Ok(())
@@ -122,52 +122,53 @@ impl PackageRegistry {
 
     pub async fn query(&self, package_name: &str) -> Result<()> {
         let installed_guard = self.installed_packages.lock().await;
-        let result = self.storage.search(package_name).await;
+        let query = parse_package_query(package_name);
+        let result = self.storage.get_packages(&query);
 
-        if result.is_empty() {
-            Err(anyhow::anyhow!("No packages found"))
-        } else {
-            for pkg in result {
-                let installed_pkg = installed_guard.find_package(&pkg);
-                let print_data = |key: &str, value: &dyn Display| {
-                    println!("{:<16}: {}", key, value);
-                };
-                let data: Vec<(&str, &dyn Display)> = vec![
-                    ("Root Path", &pkg.root_path),
-                    ("Name", &pkg.package.name),
-                    ("Binary", &pkg.package.bin_name),
-                    ("Description", &pkg.package.description),
-                    ("Version", &pkg.package.version),
-                    ("Download URL", &pkg.package.download_url),
-                    ("Size", &pkg.package.size),
-                    ("Checksum", &pkg.package.bsum),
-                    ("Build Date", &pkg.package.build_date),
-                    ("Build Log", &pkg.package.build_log),
-                    ("Build Script", &pkg.package.build_script),
-                    ("Category", &pkg.package.category),
-                    ("Extra Bins", &pkg.package.extra_bins),
-                ];
+        let Some(result) = result else {
+            return Err(anyhow::anyhow!("No packages found"));
+        };
 
-                data.iter().for_each(|(k, v)| {
-                    print_data(k, v);
-                });
+        for pkg in result {
+            let installed_pkg = installed_guard.find_package(&pkg);
+            let print_data = |key: &str, value: &dyn Display| {
+                println!("{:<16}: {}", key, value);
+            };
+            let data: Vec<(&str, &dyn Display)> = vec![
+                ("Root Path", &pkg.root_path),
+                ("Name", &pkg.package.name),
+                ("Binary", &pkg.package.bin_name),
+                ("Description", &pkg.package.description),
+                ("Version", &pkg.package.version),
+                ("Download URL", &pkg.package.download_url),
+                ("Size", &pkg.package.size),
+                ("Checksum", &pkg.package.bsum),
+                ("Build Date", &pkg.package.build_date),
+                ("Build Log", &pkg.package.build_log),
+                ("Build Script", &pkg.package.build_script),
+                ("Category", &pkg.package.category),
+                ("Extra Bins", &pkg.package.extra_bins),
+            ];
 
-                if let Some(installed) = installed_pkg {
-                    print_data(
-                        "Install Path",
-                        &pkg.package
-                            .get_install_path(&installed.checksum)
-                            .to_string_lossy(),
-                    );
-                    print_data(
-                        "Install Date",
-                        &installed.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                    );
-                }
-                println!();
+            data.iter().for_each(|(k, v)| {
+                print_data(k, v);
+            });
+
+            if let Some(installed) = installed_pkg {
+                print_data(
+                    "Install Path",
+                    &pkg.package
+                        .get_install_path(&installed.checksum)
+                        .to_string_lossy(),
+                );
+                print_data(
+                    "Install Date",
+                    &installed.timestamp.format("%Y-%m-%d %H:%M:%S"),
+                );
             }
-            Ok(())
+            println!();
         }
+        Ok(())
     }
 
     pub async fn update(&self, package_names: Option<&[String]>) -> Result<()> {
@@ -177,8 +178,11 @@ impl PackageRegistry {
     }
 
     pub async fn info(&self, package_names: Option<&[String]>) -> Result<()> {
+        if let Some([package]) = package_names {
+            return self.query(package).await;
+        }
         let installed_guard = self.installed_packages.lock().await;
-        installed_guard.info(package_names, &self.storage)
+        installed_guard.info(package_names, &self.storage).await
     }
 
     pub async fn list(&self, root_path: Option<&str>) -> Result<()> {

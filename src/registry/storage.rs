@@ -244,7 +244,7 @@ impl PackageStorage {
 
     pub async fn search(&self, query: &str) -> Vec<ResolvedPackage> {
         let query = parse_package_query(query);
-        let pkg_name = query.name.trim().to_lowercase();
+        let pkg_name = query.name.trim();
 
         let mut resolved_packages: Vec<(u32, Package, RootPath, String)> = Vec::new();
         for (repo_name, packages) in &self.repository {
@@ -271,7 +271,7 @@ impl PackageStorage {
                             let mut score = 0;
                             if pkg.name == pkg_name {
                                 score += 2;
-                            } else if pkg.name.contains(&pkg_name) {
+                            } else if pkg.name.contains(pkg_name) {
                                 score += 1;
                             } else {
                                 return None;
