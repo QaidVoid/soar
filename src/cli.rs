@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 #[command(author, version)]
 #[command(arg_required_else_help = true)]
 pub struct Args {
+    /// Unimplemented
     #[arg(short, long)]
     pub verbose: bool,
 
@@ -13,13 +14,15 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Install packages
+    /// Install packages; supports '--force' flag
     #[command(arg_required_else_help = true)]
-    #[clap(name = "install", visible_alias = "i")]
+    #[clap(name = "install", visible_alias = "i", alias = "add")]
     Install {
+        /// Packages to install
         #[arg(required = true)]
         packages: Vec<String>,
 
+        /// Whether to force install the package
         #[arg(required = false)]
         #[arg(short, long)]
         force: bool,
@@ -27,8 +30,9 @@ pub enum Commands {
 
     /// Search package
     #[command(arg_required_else_help = true)]
-    #[clap(name = "search", visible_alias = "s")]
+    #[clap(name = "search", visible_alias = "s", alias = "find")]
     Search {
+        /// Query to search
         #[arg(required = true)]
         query: String,
     },
@@ -37,53 +41,62 @@ pub enum Commands {
     #[command(arg_required_else_help = true)]
     #[clap(name = "query", visible_alias = "Q")]
     Query {
+        /// Package to inspect
         #[arg(required = true)]
         query: String,
     },
 
     /// Remove packages
     #[command(arg_required_else_help = true)]
-    #[clap(name = "remove", visible_alias = "r")]
+    #[clap(name = "remove", visible_alias = "r", alias = "del")]
     Remove {
+        /// Packages to remove
         #[arg(required = true)]
         packages: Vec<String>,
     },
 
-    /// Fetch and update metadata
-    #[command(name = "fetch")]
-    Fetch,
+    /// Sync with remote registry
+    #[clap(name = "sync", visible_alias = "S", alias = "fetch")]
+    Sync,
 
     /// Update packages
-    #[command(name = "update", visible_alias = "u")]
+    #[clap(name = "update", visible_alias = "u", alias = "upgrade")]
     Update {
+        /// Packages to update
         #[arg(required = false)]
         packages: Option<Vec<String>>,
     },
 
     /// Show info about installed packages
-    #[command(name = "info")]
+    #[clap(name = "info", alias = "list-installed")]
     ListInstalledPackages {
+        /// Packages to get info about
         #[arg(required = false)]
         packages: Option<Vec<String>>,
     },
 
     /// List all available packages
-    #[command(name = "list")]
+    #[clap(name = "list", alias = "ls")]
     ListPackages {
+        /// Root path of packages
         #[arg(required = false)]
         root_path: Option<String>,
     },
 
     /// Inspect package build log
-    #[command(name = "inspect")]
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "inspect", alias = "log")]
     Inspect {
+        /// Package to inspect
         #[arg(required = true)]
         package: String,
     },
 
     /// Run packages without installing to PATH
-    #[command(name = "run")]
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "run", visible_alias = "exec", alias = "execute")]
     Run {
+        /// Command to execute
         #[arg(required = true)]
         command: Vec<String>,
     },

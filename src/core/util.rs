@@ -158,3 +158,43 @@ pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
 
     Ok(content)
 }
+
+pub async fn cleanup() -> Result<()> {
+    let mut cache_dir = env::var("XDG_CACHE_HOME").unwrap_or_else(|_| {
+        env::var("HOME").map_or_else(
+            |_| panic!("Failed to retrieve HOME environment variable"),
+            |home| format!("{}/.cache", home),
+        )
+    });
+    cache_dir.push_str("/soar");
+    let cache_dir = build_path(&cache_dir)?;
+
+    if cache_dir.exists() {
+        let mut tree = fs::read_dir(&cache_dir).await?;
+
+        while let Some(entry) = tree.next_entry().await? {
+            let path = entry.path();
+            if xattr::get(&path, "user.ManagedBy")?.as_deref() != Some(b"soar") {
+                continue;
+            };
+
+            fs::remove_file(path).await?;
+        }
+    }
+
+    remove_broken_symlink().await?;
+
+    Ok(())
+}
+
+pub async fn remove_broken_symlink() -> Result<()> {
+    let mut tree = fs::read_dir(&*BIN_PATH).await?;
+    while let Some(entry) = tree.next_entry().await? {
+        let path = entry.path();
+        if !path.is_file() {
+            fs::remove_file(path).await?;
+        }
+    }
+
+    Ok(())
+}

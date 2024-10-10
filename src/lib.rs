@@ -3,7 +3,10 @@ use clap::Parser;
 use cli::{Args, Commands};
 use registry::PackageRegistry;
 
-use core::{config, util::setup_required_paths};
+use core::{
+    config,
+    util::{cleanup, setup_required_paths},
+};
 
 mod cli;
 mod core;
@@ -19,7 +22,8 @@ pub async fn init() -> Result<()> {
         Commands::Install { packages, force } => {
             registry.install_packages(&packages, force, false).await?;
         }
-        Commands::Fetch => {
+        Commands::Sync => {
+            cleanup().await?;
             let mut registry = registry;
             registry.fetch().await?;
         }

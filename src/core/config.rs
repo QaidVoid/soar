@@ -55,7 +55,11 @@ impl Config {
         let content = match fs::read(&config_path) {
             Ok(content) => content,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                fs::create_dir_all(pkg_config).unwrap();
+                fs::create_dir_all(&pkg_config).unwrap();
+                eprintln!(
+                    "Config not found. Generating default config at {}",
+                    config_path.to_string_lossy()
+                );
                 Config::generate(config_path)
             }
             Err(e) => {
