@@ -43,7 +43,10 @@ pub async fn init() -> Result<()> {
         }
         Commands::Inspect { package } => {
             registry.inspect(&package).await?;
-        },
+        }
+        Commands::Run { command } => {
+            registry.run(command.as_ref()).await?;
+        }
     };
 
     Ok(())

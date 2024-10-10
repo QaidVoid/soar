@@ -75,8 +75,16 @@ pub enum Commands {
     },
 
     /// Inspect package build log
+    #[command(name = "inspect")]
     Inspect {
         #[arg(required = true)]
-        package: String
-    }
+        package: String,
+    },
+
+    /// Run packages without installing to PATH
+    #[command(name = "run")]
+    Run {
+        #[arg(required = true)]
+        command: Vec<String>,
+    },
 }

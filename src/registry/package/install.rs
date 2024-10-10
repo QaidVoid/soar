@@ -52,12 +52,12 @@ impl Installer {
         }
 
         if is_installed && !is_update {
-            println!("{} Reinstalling package", prefix);
+            println!("{}: Reinstalling package", prefix);
         }
 
         if let Some(parent) = self.install_path.parent() {
             fs::create_dir_all(parent).await.context(format!(
-                "{} Failed to create install directory {}",
+                "{}: Failed to create install directory {}",
                 prefix,
                 self.install_path.to_string_lossy()
             ))?;
@@ -77,7 +77,7 @@ impl Installer {
             .header("Range", format!("bytes={}-", downloaded_bytes))
             .send()
             .await
-            .context(format!("{} Failed to download package", prefix))?;
+            .context(format!("{}: Failed to download package", prefix))?;
         let total_size = response
             .content_length()
             .map(|cl| cl + downloaded_bytes)
@@ -90,26 +90,28 @@ impl Installer {
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
-                "{} Download failed: {:?}",
+                "{} Download failed with status code {:?}",
                 prefix,
                 response.status(),
             ));
         }
 
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(&temp_path)
-            .await
-            .context(format!("{} Failed to open temp file for writing", prefix))?;
-        let mut stream = response.bytes_stream();
+        {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(true)
+                .open(&temp_path)
+                .await
+                .context(format!("{}: Failed to open temp file for writing", prefix))?;
+            let mut stream = response.bytes_stream();
 
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.context(format!("{} Failed to read chunk", prefix))?;
-            file.write_all(&chunk).await?;
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk.context(format!("{}: Failed to read chunk", prefix))?;
+                file.write_all(&chunk).await?;
+            }
+            file.flush().await?;
         }
-        file.flush().await?;
 
         if package.bsum == "null" {
             eprintln!(
@@ -157,7 +159,7 @@ impl Installer {
         }
         tokio::fs::rename(&temp_path, &install_path).await?;
         tokio::fs::set_permissions(&install_path, Permissions::from_mode(0o755)).await?;
-        xattr::set(install_path, "user.owner", b"soar")?;
+        xattr::set(install_path, "user.ManagedBy", b"soar")?;
 
         Ok(())
     }

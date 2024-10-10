@@ -208,6 +208,10 @@ impl PackageRegistry {
     pub async fn inspect(&self, package_name: &str) -> Result<()> {
         self.storage.inspect(package_name).await
     }
+
+    pub async fn run(&self, command: &[String]) -> Result<()> {
+        self.storage.run(command).await
+    }
 }
 
 pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {

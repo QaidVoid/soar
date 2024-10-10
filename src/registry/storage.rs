@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    env,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -8,10 +9,16 @@ use std::{
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{Mutex, Semaphore};
+use tokio::{
+    fs,
+    sync::{Mutex, Semaphore},
+};
 
 use crate::{
-    core::{config::CONFIG, util::download},
+    core::{
+        config::CONFIG,
+        util::{build_path, download},
+    },
     registry::{
         installed::InstalledPackages,
         package::{parse_package_query, ResolvedPackage},
@@ -309,6 +316,31 @@ impl PackageStorage {
         let log_str = String::from_utf8_lossy(&log).replace("\r", "\n");
 
         println!("\n{}", log_str);
+
+        Ok(())
+    }
+
+    pub async fn run(&self, command: &[String]) -> Result<()> {
+        let mut cache_dir = env::var("XDG_CACHE_HOME").unwrap_or_else(|_| {
+            env::var("HOME").map_or_else(
+                |_| panic!("Failed to retrieve HOME environment variable"),
+                |home| format!("{}/.cache", home),
+            )
+        });
+        cache_dir.push_str("/soar");
+        let cache_dir = build_path(&cache_dir)?;
+
+        fs::create_dir_all(&cache_dir).await?;
+
+        let package_name = &command[0];
+        let resolved_pkg = self.resolve_package(package_name)?;
+
+        let args = if command.len() > 1 {
+            &command[1..]
+        } else {
+            &[]
+        };
+        resolved_pkg.run(args, &cache_dir).await?;
 
         Ok(())
     }

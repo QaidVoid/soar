@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use futures::StreamExt;
 use tokio::{
     fs::{self, File},
-    io::AsyncReadExt,
+    io::{AsyncReadExt, AsyncWriteExt},
 };
 
 use super::constant::{BIN_PATH, INSTALL_TRACK_PATH};
@@ -105,6 +105,8 @@ pub async fn validate_checksum(checksum: &str, file_path: &Path) -> Result<()> {
         }
         hasher.update(&buffer[..n]);
     }
+
+    file.flush().await?;
 
     let final_checksum = hasher.finalize().to_hex().to_string();
     if final_checksum == *checksum {

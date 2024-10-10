@@ -1,12 +1,18 @@
 mod install;
 mod remove;
+mod run;
 pub mod update;
 
-use std::{fmt::Display, path::PathBuf, sync::Arc};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::Result;
 use install::Installer;
 use remove::Remover;
+use run::Runner;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -61,6 +67,13 @@ impl ResolvedPackage {
         let remover = Remover::new(self, self.package.get_install_dir()?).await?;
         let mut installed_packages = InstalledPackages::new().await?;
         remover.execute(&mut installed_packages).await?;
+        Ok(())
+    }
+
+    pub async fn run(&self, args: &[String], cache_dir: &Path) -> Result<()> {
+        let package_path = cache_dir.join(&self.package.bin_name);
+        let runner = Runner::new(self, package_path, args);
+        runner.execute().await?;
         Ok(())
     }
 }
