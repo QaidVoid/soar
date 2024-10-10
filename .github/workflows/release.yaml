@@ -1,0 +1,109 @@
+name: soar release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+permissions:
+  contents: write
+
+jobs:
+  generate-changelog:
+    name: Generate changelog
+    runs-on: ubuntu-22.04
+    outputs:
+      release_body: ${{ steps.git-cliff.outputs.content }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@main
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -vv --latest --no-exec --github-repo ${{ github.repository }}
+  publish-binaries:
+    name: Publish binaries
+    needs: generate-changelog
+    runs-on: ${{ matrix.build.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - {
+              NAME: x86_64-linux,
+              OS: ubuntu-22.04,
+              TOOLCHAIN: stable,
+              TARGET: x86_64-unknown-linux-musl,
+            }
+          - {
+              NAME: aarch64-linux,
+              OS: ubuntu-22.04,
+              TOOLCHAIN: stable,
+              TARGET: aarch64-unknown-linux-musl,
+            }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set the release version
+        shell: bash
+        run: echo "RELEASE_VERSION=${GITHUB_REF:11}" >> $GITHUB_ENV
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            --allow-unauthenticated musl-tools b3sum
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.build.TOOLCHAIN }}
+          target: ${{ matrix.build.TARGET }}
+          override: true
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --locked --target ${{ matrix.build.TARGET }}
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p release
+          cp {LICENSE,README.md,CHANGELOG.md} release/
+          cp "target/${{ matrix.build.TARGET }}/release/soar" release/
+          mv release/ soar-${{ env.RELEASE_VERSION }}/
+      - name: Create release artifacts
+        shell: bash
+        run: |
+            cp soar-${{ env.RELEASE_VERSION }}/soar soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}
+            b3sum soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }} \
+              > soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.b3sum
+            tar -czvf soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.tar.gz \
+              soar-${{ env.RELEASE_VERSION }}/
+            b3sum soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.tar.gz \
+              > soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.tar.gz.b3sum
+      - name: Publish to GitHub
+        if: ${{ !contains(github.ref, '-') }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}*
+          file_glob: true
+          overwrite: true
+          tag: ${{ github.ref }}
+          release_name: "Release v${{ env.RELEASE_VERSION }}"
+          body: "${{ needs.generate-changelog.outputs.release_body }}"
+      - name: Publish to GitHub (pre-release)
+        if: ${{ contains(github.ref, '-') }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}*
+          file_glob: true
+          overwrite: true
+          tag: ${{ github.ref }}
+          release_name: "Pre-release v${{ env.RELEASE_VERSION }}"
+          prerelease: true
