@@ -30,7 +30,7 @@ impl Runner {
 
     pub async fn execute(&self) -> Result<()> {
         let package = &self.resolved_package.package;
-        let package_name = &package.full_name();
+        let package_name = &package.full_name('/');
 
         if self.install_path.exists() {
             if xattr::get(&self.install_path, "user.ManagedBy")?.as_deref() != Some(b"soar") {
@@ -107,7 +107,7 @@ impl Runner {
         if package.bsum == "null" {
             eprintln!(
                 "Missing checksum for {}. Installing anyway.",
-                package.full_name()
+                package.full_name('/')
             );
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;

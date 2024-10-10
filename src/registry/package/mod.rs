@@ -16,7 +16,7 @@ use run::Runner;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::core::{config::CONFIG, util::build_path};
+use crate::core::constant::PACKAGES_PATH;
 
 use super::installed::InstalledPackages;
 
@@ -55,7 +55,7 @@ impl ResolvedPackage {
         is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
     ) -> Result<()> {
-        let install_path = self.package.get_install_path()?;
+        let install_path = self.package.get_install_path(&self.package.bsum);
         let mut installer = Installer::new(self, install_path);
         installer
             .execute(idx, total, installed_packages, force, is_update)
@@ -64,7 +64,7 @@ impl ResolvedPackage {
     }
 
     pub async fn remove(&self) -> Result<()> {
-        let remover = Remover::new(self, self.package.get_install_dir()?).await?;
+        let remover = Remover::new(self).await?;
         let mut installed_packages = InstalledPackages::new().await?;
         remover.execute(&mut installed_packages).await?;
         Ok(())
@@ -79,28 +79,21 @@ impl ResolvedPackage {
 }
 
 impl Package {
-    pub fn get_install_dir(&self) -> Result<PathBuf> {
+    pub fn get_install_dir(&self, checksum: &str) -> PathBuf {
+        PACKAGES_PATH.join(format!("{}-{}", checksum, self.full_name('-')))
+    }
+
+    pub fn get_install_path(&self, checksum: &str) -> PathBuf {
+        self.get_install_dir(checksum)
+            .join("bin")
+            .join(&self.bin_name)
+    }
+
+    pub fn full_name(&self, join_char: char) -> String {
         let variant_prefix = self
             .variant
             .to_owned()
-            .map(|variant| format!("{}-", variant))
-            .unwrap_or_default();
-        let path = build_path(&CONFIG.soar_path)?
-            .join("packages")
-            .join(format!("{}{}-{}", variant_prefix, self.name, self.version));
-        Ok(path)
-    }
-
-    pub fn get_install_path(&self) -> Result<PathBuf> {
-        let path = self.get_install_dir()?.join("bin").join(&self.bin_name);
-        Ok(path)
-    }
-
-    pub fn full_name(&self) -> String {
-        let variant_prefix = self
-            .variant
-            .to_owned()
-            .map(|variant| format!("{}/", variant))
+            .map(|variant| format!("{}{}", variant, join_char))
             .unwrap_or_default();
         format!("{}{}", variant_prefix, self.name)
     }

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -5,9 +7,8 @@ use tokio::fs;
 
 use crate::{
     core::{
-        config::CONFIG,
         constant::INSTALL_TRACK_PATH,
-        util::{build_path, format_bytes, parse_size},
+        util::{format_bytes, parse_size},
     },
     registry::package::parse_package_query,
 };
@@ -65,7 +66,7 @@ impl InstalledPackages {
         self.packages.iter().any(|installed| {
             installed.repo_name == package.repo_name
                 && installed.root_path == package.root_path
-                && installed.name == package.package.full_name()
+                && installed.name == package.package.full_name('-')
         })
     }
 
@@ -73,7 +74,7 @@ impl InstalledPackages {
         self.packages.iter_mut().find(|installed| {
             installed.repo_name == package.repo_name
                 && installed.root_path == package.root_path
-                && installed.name == package.package.full_name()
+                && installed.name == package.package.full_name('-')
         })
     }
 
@@ -81,11 +82,15 @@ impl InstalledPackages {
         self.packages.iter().find(|installed| {
             installed.repo_name == package.repo_name
                 && installed.root_path == package.root_path
-                && installed.name == package.package.full_name()
+                && installed.name == package.package.full_name('-')
         })
     }
 
-    pub async fn register_package(&mut self, resolved_package: &ResolvedPackage) -> Result<()> {
+    pub async fn register_package(
+        &mut self,
+        resolved_package: &ResolvedPackage,
+        checksum: &str,
+    ) -> Result<()> {
         let package = resolved_package.package.to_owned();
         if let Some(installed) = self.find_package_mut(resolved_package) {
             installed.version = package.version.clone();
@@ -94,10 +99,10 @@ impl InstalledPackages {
             let new_installed = InstalledPackage {
                 repo_name: resolved_package.repo_name.to_owned(),
                 root_path: resolved_package.root_path.to_owned(),
-                name: package.full_name(),
+                name: package.full_name('-'),
                 bin_name: package.bin_name,
                 version: package.version,
-                checksum: package.bsum,
+                checksum: checksum.to_owned(),
                 size: parse_size(&package.size).unwrap_or_default(),
                 timestamp: Utc::now(),
             };
@@ -115,9 +120,8 @@ impl InstalledPackages {
                 self.packages.retain(|installed| {
                     !(installed.repo_name == resolved_package.repo_name
                         && installed.root_path == resolved_package.root_path
-                        && installed.name == resolved_package.package.full_name())
+                        && installed.name == resolved_package.package.full_name('-'))
                 });
-                println!("NOW: {:#?}", self.packages);
             }
             false => {
                 return Err(anyhow::anyhow!(
@@ -171,17 +175,13 @@ impl InstalledPackages {
 
         resolved_packages.iter().for_each(|package| {
             println!(
-                "- [{}] {}:{}-{} ({}/{}-{}/bin) ({})",
+                "- [{}] {}:{}-{} ({}-{}/bin) ({})",
                 package.root_path,
                 package.name,
                 package.name,
                 package.version,
-                build_path(&CONFIG.soar_path)
-                    .unwrap()
-                    .join("packages")
-                    .to_string_lossy(),
+                package.checksum,
                 package.name,
-                package.version,
                 format_bytes(package.size)
             );
 
@@ -215,5 +215,18 @@ impl InstalledPackages {
         println!("{:<4} Total: {} ({})", "", total.0, format_bytes(total.1));
 
         Ok(())
+    }
+
+    pub fn reverse_package_search(&self, path: &Path) -> Option<InstalledPackage> {
+        let path_str = path.to_string_lossy();
+        if path_str.len() > 64 {
+            let checksum = &path_str[..64];
+            self.packages
+                .iter()
+                .find(|package| package.checksum == checksum)
+                .cloned()
+        } else {
+            None
+        }
     }
 }

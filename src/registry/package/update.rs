@@ -51,14 +51,17 @@ impl Updater {
         for package in packages {
             if let Some(installed_package) = installed_packages.packages.iter().find(|installed| {
                 installed.repo_name == package.repo_name
-                    && installed.name == package.package.full_name()
+                    && installed.name == package.package.full_name('/')
                     && installed.root_path == package.root_path
             }) {
                 if installed_package.checksum != package.package.bsum {
                     packages_to_update.push(package);
                 }
             } else {
-                println!("Package {} is not installed.", package.package.full_name());
+                println!(
+                    "Package {} is not installed.",
+                    package.package.full_name('/')
+                );
             }
         }
 

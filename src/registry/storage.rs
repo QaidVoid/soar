@@ -101,11 +101,12 @@ impl PackageStorage {
                 let installed_packages = installed_packages.clone();
 
                 let handle = tokio::spawn(async move {
-                    if package
+                    if let Err(e) = package
                         .install(idx, pkgs_len, force, is_update, installed_packages)
                         .await
-                        .is_ok()
                     {
+                        eprintln!("{}", e);
+                    } else {
                         ic.fetch_add(1, Ordering::Relaxed);
                     };
                     drop(permit);
@@ -119,7 +120,7 @@ impl PackageStorage {
             }
         } else {
             for (idx, package) in resolved_packages.iter().enumerate() {
-                if package
+                if let Err(e) = package
                     .install(
                         idx,
                         resolved_packages.len(),
@@ -128,8 +129,9 @@ impl PackageStorage {
                         installed_packages.clone(),
                     )
                     .await
-                    .is_ok()
                 {
+                    eprintln!("{}", e);
+                } else {
                     installed_count.fetch_add(1, Ordering::Relaxed);
                 };
             }

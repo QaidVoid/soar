@@ -8,3 +8,5 @@ pub static BIN_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| build_path(&CONFIG.soar_path).unwrap().join("bin"));
 pub static INSTALL_TRACK_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| build_path(&CONFIG.soar_path).unwrap().join("installs"));
+pub static PACKAGES_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| build_path(&CONFIG.soar_path).unwrap().join("packages"));

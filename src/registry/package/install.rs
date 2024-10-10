@@ -6,8 +6,8 @@ use tokio::{fs, io::AsyncWriteExt, sync::Mutex};
 
 use crate::{
     core::{
-        constant::BIN_PATH,
-        util::{format_bytes, validate_checksum},
+        constant::{BIN_PATH, PACKAGES_PATH},
+        util::{calculate_checksum, format_bytes, validate_checksum},
     },
     registry::installed::InstalledPackages,
 };
@@ -22,7 +22,11 @@ pub struct Installer {
 
 impl Installer {
     pub fn new(package: &ResolvedPackage, install_path: PathBuf) -> Self {
-        let temp_path = install_path.with_extension("part");
+        let temp_path = PACKAGES_PATH
+            .join("tmp")
+            .join(package.package.full_name('-'))
+            .with_extension("part");
+        println!("TMP PATH: {:#?}", temp_path);
         Self {
             resolved_package: package.to_owned(),
             install_path,
@@ -44,7 +48,7 @@ impl Installer {
             .await
             .is_installed(&self.resolved_package);
 
-        let prefix = format!("[{}/{}] {}", idx + 1, total, package.full_name());
+        let prefix = format!("[{}/{}] {}", idx + 1, total, package.full_name('/'));
 
         if !force && is_installed {
             println!("{}: Package is already installed", prefix);
@@ -55,11 +59,11 @@ impl Installer {
             println!("{}: Reinstalling package", prefix);
         }
 
-        if let Some(parent) = self.install_path.parent() {
+        if let Some(parent) = self.temp_path.parent() {
             fs::create_dir_all(parent).await.context(format!(
-                "{}: Failed to create install directory {}",
+                "{}: Failed to create temp directory {}",
                 prefix,
-                self.install_path.to_string_lossy()
+                self.temp_path.to_string_lossy()
             ))?;
         }
 
@@ -116,7 +120,7 @@ impl Installer {
         if package.bsum == "null" {
             eprintln!(
                 "Missing checksum for {}. Installing anyway.",
-                package.full_name()
+                package.full_name('/')
             );
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
@@ -136,13 +140,24 @@ impl Installer {
                 }
             }
         }
+        let checksum = calculate_checksum(temp_path).await?;
+
+        self.install_path = package.get_install_path(&checksum);
+        if let Some(parent) = self.install_path.parent() {
+            fs::create_dir_all(parent).await.context(format!(
+                "{}: Failed to create install directory {}",
+                prefix,
+                self.install_path.to_string_lossy()
+            ))?;
+        }
+
         self.save_file().await?;
-        self.symlink_bin().await?;
+        self.symlink_bin(&installed_packages).await?;
 
         {
             let mut installed_packages = installed_packages.lock().await;
             installed_packages
-                .register_package(&self.resolved_package)
+                .register_package(&self.resolved_package, &checksum)
                 .await?;
         }
 
@@ -164,10 +179,36 @@ impl Installer {
         Ok(())
     }
 
-    async fn symlink_bin(&self) -> Result<()> {
+    async fn symlink_bin(&self, installed_packages: &Arc<Mutex<InstalledPackages>>) -> Result<()> {
+        let package = &self.resolved_package.package;
         let install_path = &self.install_path;
-        let symlink_path = &BIN_PATH.join(&self.resolved_package.package.bin_name);
+        let symlink_path = &BIN_PATH.join(&package.bin_name);
+        let installed_guard = installed_packages.lock().await;
         if symlink_path.exists() {
+            if let Ok(link) = symlink_path.read_link() {
+                if &link != install_path {
+                    if let Some(path_owner) =
+                        installed_guard.reverse_package_search(link.strip_prefix(&*PACKAGES_PATH)?)
+                    {
+                        println!(
+                            "Warning: The package {} owns the binary {}",
+                            path_owner.name, &package.bin_name
+                        );
+                        print!(
+                            "Do you want to switch to {} (y/N)? ",
+                            package.full_name('/')
+                        );
+                        std::io::stdout().flush()?;
+
+                        let mut response = String::new();
+                        std::io::stdin().read_line(&mut response)?;
+
+                        if !response.trim().eq_ignore_ascii_case("y") {
+                            return Ok(());
+                        }
+                    }
+                }
+            }
             fs::remove_file(symlink_path).await?;
         }
         fs::symlink(&install_path, &symlink_path)

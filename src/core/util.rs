@@ -13,7 +13,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use super::constant::{BIN_PATH, INSTALL_TRACK_PATH};
+use super::constant::{BIN_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH};
 
 /// Expands the environment variables and user home directory in a given path.
 pub fn build_path(path: &str) -> Result<PathBuf> {
@@ -93,7 +93,7 @@ pub fn parse_size(size_str: &str) -> Option<u64> {
     None
 }
 
-pub async fn validate_checksum(checksum: &str, file_path: &Path) -> Result<()> {
+pub async fn calculate_checksum(file_path: &Path) -> Result<String> {
     let mut file = File::open(&file_path).await?;
 
     let mut hasher = blake3::Hasher::new();
@@ -108,7 +108,11 @@ pub async fn validate_checksum(checksum: &str, file_path: &Path) -> Result<()> {
 
     file.flush().await?;
 
-    let final_checksum = hasher.finalize().to_hex().to_string();
+    Ok(hasher.finalize().to_hex().to_string())
+}
+
+pub async fn validate_checksum(checksum: &str, file_path: &Path) -> Result<()> {
+    let final_checksum = calculate_checksum(file_path).await?;
     if final_checksum == *checksum {
         Ok(())
     } else {
@@ -131,6 +135,13 @@ pub async fn setup_required_paths() -> Result<()> {
                 "Failed to create path: {}",
                 INSTALL_TRACK_PATH.to_string_lossy()
             ))?;
+    }
+
+    if !PACKAGES_PATH.exists() {
+        fs::create_dir_all(&*PACKAGES_PATH).await.context(format!(
+            "Failed to create path: {}",
+            PACKAGES_PATH.to_string_lossy()
+        ))?;
     }
 
     Ok(())
