@@ -100,4 +100,13 @@ pub enum Commands {
         #[arg(required = true)]
         command: Vec<String>,
     },
+
+    /// Use different variant of a package
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "use")]
+    Use {
+        /// The package to use
+        #[arg(required = true)]
+        package: String,
+    },
 }

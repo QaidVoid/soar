@@ -51,6 +51,9 @@ pub async fn init() -> Result<()> {
         Commands::Run { command } => {
             registry.run(command.as_ref()).await?;
         }
+        Commands::Use { package } => {
+            registry.use_package(&package).await?;
+        }
     };
 
     Ok(())

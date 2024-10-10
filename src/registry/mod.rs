@@ -226,6 +226,37 @@ impl PackageRegistry {
     pub async fn run(&self, command: &[String]) -> Result<()> {
         self.storage.run(command).await
     }
+
+    pub async fn use_package(&self, package_name: &str) -> Result<()> {
+        let installed_guard = self.installed_packages.lock().await;
+        let resolved_package = self.storage.resolve_package(package_name)?;
+        let result = installed_guard.use_package(&resolved_package).await;
+        drop(installed_guard);
+        match result {
+            Ok(_) => {
+                println!("{} linked to binary path", package_name);
+                Ok(())
+            }
+            Err(e) => {
+                if e.to_string() == "NOT_INSTALLED" {
+                    println!("Package is not yet installed.");
+                    let package_name = resolved_package.package.full_name('/');
+                    self.storage
+                        .install_packages(
+                            &[package_name.to_owned()],
+                            true,
+                            false,
+                            self.installed_packages.clone(),
+                        )
+                        .await?;
+
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
 }
 
 pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {

@@ -26,7 +26,6 @@ impl Installer {
             .join("tmp")
             .join(package.package.full_name('-'))
             .with_extension("part");
-        println!("TMP PATH: {:#?}", temp_path);
         Self {
             resolved_package: package.to_owned(),
             install_path,

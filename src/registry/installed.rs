@@ -7,7 +7,7 @@ use tokio::fs;
 
 use crate::{
     core::{
-        constant::INSTALL_TRACK_PATH,
+        constant::{BIN_PATH, INSTALL_TRACK_PATH},
         util::{format_bytes, parse_size},
     },
     registry::package::parse_package_query,
@@ -228,5 +228,30 @@ impl InstalledPackages {
         } else {
             None
         }
+    }
+
+    pub async fn use_package(&self, resolved_package: &ResolvedPackage) -> Result<()> {
+        if let Some(installed) = self.find_package(resolved_package) {
+            let install_path = resolved_package
+                .package
+                .get_install_path(&installed.checksum);
+            let symlink_path = &BIN_PATH.join(&installed.bin_name);
+
+            if symlink_path.exists() {
+                fs::remove_file(symlink_path).await?;
+            }
+
+            fs::symlink(&install_path, symlink_path)
+                .await
+                .context(format!(
+                    "Failed to link {} to {}",
+                    install_path.to_string_lossy(),
+                    symlink_path.to_string_lossy()
+                ))?;
+        } else {
+            return Err(anyhow::anyhow!("NOT_INSTALLED"));
+        }
+
+        Ok(())
     }
 }

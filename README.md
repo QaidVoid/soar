@@ -34,6 +34,7 @@ Commands:
   list     List all available packages
   inspect  Inspect package build log
   run      Run packages without installing to PATH [aliases: exec]
+  use      Use different variant of a package
   help     Print this message or the help of the given subcommand(s)
 
 Options:
