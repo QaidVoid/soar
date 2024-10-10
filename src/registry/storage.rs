@@ -1,13 +1,15 @@
 use std::{
     collections::HashMap,
     env,
+    io::Write,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs,
@@ -17,7 +19,7 @@ use tokio::{
 use crate::{
     core::{
         config::CONFIG,
-        util::{build_path, download},
+        util::{build_path, format_bytes},
     },
     registry::{
         installed::InstalledPackages,
@@ -314,8 +316,50 @@ impl PackageStorage {
 
     pub async fn inspect(&self, package_name: &str) -> Result<()> {
         let resolved_pkg = self.resolve_package(package_name)?;
-        let log = download(&resolved_pkg.package.build_log, "log").await?;
-        let log_str = String::from_utf8_lossy(&log).replace("\r", "\n");
+
+        let client = reqwest::Client::new();
+        let url = resolved_pkg.package.build_log;
+        let response = client.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!(
+                "Error fetching log from {} [{}]",
+                url,
+                response.status()
+            ));
+        }
+
+        let content_length = response.content_length().unwrap_or_default();
+        if content_length > 1_048_576 {
+            print!(
+                "The log file is too large ({}). Do you really want to download and view it (y/N)? ",
+                format_bytes(content_length)
+            );
+
+            std::io::stdout().flush()?;
+            let mut response = String::new();
+
+            std::io::stdin().read_line(&mut response)?;
+
+            if !response.trim().eq_ignore_ascii_case("y") {
+                return Err(anyhow::anyhow!(""));
+            }
+        }
+
+        println!(
+            "Fetching log from {} [{}]",
+            url,
+            format_bytes(response.content_length().unwrap_or_default())
+        );
+
+        let mut stream = response.bytes_stream();
+
+        let mut content = Vec::new();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.context("Failed to read chunk")?;
+            content.extend_from_slice(&chunk);
+        }
+        let log_str = String::from_utf8_lossy(&content).replace("\r", "\n");
 
         println!("\n{}", log_str);
 

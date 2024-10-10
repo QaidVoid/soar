@@ -151,6 +151,15 @@ pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
     let client = reqwest::Client::new();
     let response = client.get(url).send().await?;
 
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!(
+            "Error fetching {} from {} [{}]",
+            what,
+            url,
+            response.status()
+        ));
+    }
+
     let mut content = Vec::new();
 
     println!(
