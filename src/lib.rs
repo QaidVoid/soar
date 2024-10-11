@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use cli::{Args, Commands};
+use misc::download::download_and_save;
 use registry::PackageRegistry;
 
 use core::{
@@ -10,6 +11,7 @@ use core::{
 
 mod cli;
 mod core;
+mod misc;
 mod registry;
 
 pub async fn init() -> Result<()> {
@@ -53,6 +55,9 @@ pub async fn init() -> Result<()> {
         }
         Commands::Use { package } => {
             registry.use_package(&package).await?;
+        }
+        Commands::Download { links } => {
+            download_and_save(links.as_ref()).await?;
         }
     };
 

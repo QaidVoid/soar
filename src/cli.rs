@@ -109,4 +109,13 @@ pub enum Commands {
         #[arg(required = true)]
         package: String,
     },
+
+    /// Download arbitrary files
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "download", visible_alias = "dl")]
+    Download {
+        /// Links to files
+        #[arg(required = true)]
+        links: Vec<String>,
+    },
 }
