@@ -103,7 +103,7 @@ impl Runner {
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
             if result.is_err() {
-                eprint!("\n{}: Checksum verification failed.", package_name);
+                eprintln!("\n{}: Checksum verification failed.", package_name);
             }
         }
 
@@ -127,7 +127,7 @@ impl Runner {
     }
 
     async fn run(&self) -> Result<()> {
-        Command::new(&self.install_path).args(&self.args).spawn()?;
+        Command::new(&self.install_path).args(&self.args).status()?;
 
         Ok(())
     }

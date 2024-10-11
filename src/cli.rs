@@ -97,7 +97,7 @@ pub enum Commands {
     #[clap(name = "run", visible_alias = "exec", alias = "execute")]
     Run {
         /// Command to execute
-        #[arg(required = true)]
+        #[arg(required = true, trailing_var_arg = true)]
         command: Vec<String>,
     },
 
