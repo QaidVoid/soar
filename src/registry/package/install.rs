@@ -9,7 +9,10 @@ use crate::{
         constant::{BIN_PATH, PACKAGES_PATH},
         util::{calculate_checksum, format_bytes, validate_checksum},
     },
-    registry::installed::InstalledPackages,
+    registry::{
+        installed::InstalledPackages,
+        package::{appimage::extract_appimage, RootPath},
+    },
 };
 
 use super::ResolvedPackage;
@@ -152,6 +155,13 @@ impl Installer {
 
         self.save_file().await?;
         self.symlink_bin(&installed_packages).await?;
+        if self.resolved_package.root_path == RootPath::Pkg {
+            if let Err(e) = extract_appimage(&package.bin_name, &self.install_path).await {
+                if e.to_string() != "NOT_APPIMAGE" {
+                    return Err(e);
+                }
+            };
+        }
 
         {
             let mut installed_packages = installed_packages.lock().await;

@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    env,
     io::Write,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -19,7 +18,7 @@ use tokio::{
 use crate::{
     core::{
         config::CONFIG,
-        util::{build_path, format_bytes, get_platform},
+        util::{build_path, format_bytes, get_platform, home_cache_path},
     },
     registry::{
         installed::InstalledPackages,
@@ -367,12 +366,7 @@ impl PackageStorage {
     }
 
     pub async fn run(&self, command: &[String]) -> Result<()> {
-        let mut cache_dir = env::var("XDG_CACHE_HOME").unwrap_or_else(|_| {
-            env::var("HOME").map_or_else(
-                |_| panic!("Failed to retrieve HOME environment variable"),
-                |home| format!("{}/.cache", home),
-            )
-        });
+        let mut cache_dir = home_cache_path();
         cache_dir.push_str("/soar");
         let cache_dir = build_path(&cache_dir)?;
 

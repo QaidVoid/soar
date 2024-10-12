@@ -1,3 +1,4 @@
+mod appimage;
 mod install;
 mod remove;
 pub mod run;
@@ -72,9 +73,7 @@ impl Package {
     }
 
     pub fn get_install_path(&self, checksum: &str) -> PathBuf {
-        self.get_install_dir(checksum)
-            .join("bin")
-            .join(&self.bin_name)
+        self.get_install_dir(checksum).join(&self.bin_name)
     }
 
     pub fn full_name(&self, join_char: char) -> String {

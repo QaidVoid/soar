@@ -15,6 +15,24 @@ use tokio::{
 
 use super::constant::{BIN_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH};
 
+pub fn home_path() -> String {
+    env::var("HOME").unwrap_or_else(|_| {
+        panic!("Unable to find home directory.");
+    })
+}
+
+pub fn home_config_path() -> String {
+    env::var("XDG_CONFIG_HOME").unwrap_or(format!("{}/.config", home_path()))
+}
+
+pub fn home_cache_path() -> String {
+    env::var("XDG_CACHE_HOME").unwrap_or(format!("{}/.cache", home_path()))
+}
+
+pub fn home_data_path() -> String {
+    env::var("XDG_DATA_HOME").unwrap_or(format!("{}/.local/share", home_path()))
+}
+
 /// Expands the environment variables and user home directory in a given path.
 pub fn build_path(path: &str) -> Result<PathBuf> {
     let mut result = String::new();
@@ -180,12 +198,7 @@ pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
 }
 
 pub async fn cleanup() -> Result<()> {
-    let mut cache_dir = env::var("XDG_CACHE_HOME").unwrap_or_else(|_| {
-        env::var("HOME").map_or_else(
-            |_| panic!("Failed to retrieve HOME environment variable"),
-            |home| format!("{}/.cache", home),
-        )
-    });
+    let mut cache_dir = home_cache_path();
     cache_dir.push_str("/soar");
     let cache_dir = build_path(&cache_dir)?;
 

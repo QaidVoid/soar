@@ -3,7 +3,10 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use tokio::fs;
 
-use crate::{core::constant::BIN_PATH, registry::installed::InstalledPackages};
+use crate::{
+    core::constant::BIN_PATH,
+    registry::{installed::InstalledPackages, package::appimage::remove_applinks},
+};
 
 use super::ResolvedPackage;
 
@@ -33,6 +36,7 @@ impl Remover {
         let install_path = package.get_install_path(&installed.checksum);
         self.remove_symlink(&install_path).await?;
         self.remove_package_path(&install_dir).await?;
+        remove_applinks(&package.bin_name).await?;
         installed_packages
             .unregister_package(&self.resolved_package)
             .await?;

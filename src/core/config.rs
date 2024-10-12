@@ -2,7 +2,7 @@ use std::{env, fs, path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
-use super::constant::REGISTRY_PATH;
+use super::{constant::REGISTRY_PATH, util::home_config_path};
 
 /// Application's configuration
 #[derive(Deserialize, Serialize)]
@@ -44,12 +44,7 @@ impl Config {
     /// Creates a new configuration by loading it from the configuration file.
     /// If the configuration file is not found, it generates a new default configuration.
     pub fn new() -> Self {
-        let home_config = env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| {
-            env::var("HOME").map_or_else(
-                |_| panic!("Failed to retrieve HOME environment variable"),
-                |home| format!("{}/.config", home),
-            )
-        });
+        let home_config = home_config_path();
         let pkg_config = PathBuf::from(home_config).join(env!("CARGO_PKG_NAME"));
         let config_path = pkg_config.join("config.json");
         let content = match fs::read(&config_path) {
