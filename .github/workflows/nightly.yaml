@@ -1,0 +1,79 @@
+name: soar nightly
+
+on:
+  schedule:
+    - cron: '0 */3 * * *' 
+  workflow_dispatch:  
+
+permissions:
+  contents: write
+
+jobs:
+  publish-nightly:
+    name: Publish nightly binaries
+    runs-on: ${{ matrix.build.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - {
+              NAME: x86_64-linux,
+              OS: ubuntu-22.04,
+              TOOLCHAIN: stable,
+              TARGET: x86_64-unknown-linux-musl,
+            }
+          - {
+              NAME: aarch64-linux,
+              OS: ubuntu-22.04,
+              TOOLCHAIN: stable,
+              TARGET: aarch64-unknown-linux-musl,
+            }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            --allow-unauthenticated musl-tools b3sum
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.build.TOOLCHAIN }}
+          target: ${{ matrix.build.TARGET }}
+          override: true
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --locked --target ${{ matrix.build.TARGET }}
+
+      - name: Prepare nightly binary
+        shell: bash
+        run: |
+          mkdir -p nightly
+          cp "target/${{ matrix.build.TARGET }}/release/soar" nightly/soar-nightly-${{ matrix.build.NAME }}
+          b3sum nightly/soar-nightly-${{ matrix.build.NAME }} > nightly/soar-nightly-${{ matrix.build.NAME }}.b3sum
+
+      - name: Upload nightly binary
+        uses: softprops/action-gh-release@v1
+        with:
+          files: nightly/*
+          tag_name: nightly
+          name: "Nightly Build"
+          body: "This is an automated nightly build of Soar."
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update nightly tag
+        run: |
+          git config user.name "Rabindra Dhakal"
+          git config user.email contact@qaidvoid.dev
+          git tag -f nightly
+          git push origin nightly -f
