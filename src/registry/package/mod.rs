@@ -21,6 +21,7 @@ pub struct Package {
     pub name: String,
     pub bin_name: String,
     pub description: String,
+    pub note: String,
     pub version: String,
     pub download_url: String,
     pub size: String,

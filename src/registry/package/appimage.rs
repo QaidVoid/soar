@@ -1,14 +1,31 @@
 use std::{
+    collections::HashSet,
     fs::File,
     io::{BufReader, BufWriter, Read, Seek, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
-use anyhow::Result;
-use backhand::{kind::Kind, FilesystemReader, InnerNode};
+use anyhow::{Context, Result};
+use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader};
+use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use tokio::fs;
 
-use crate::core::util::home_data_path;
+use crate::core::{constant::BIN_PATH, util::home_data_path};
+
+const SUPPORTED_DIMENSIONS: &[(u32, u32)] = &[
+    (16, 16),
+    (24, 24),
+    (32, 32),
+    (48, 48),
+    (64, 64),
+    (72, 72),
+    (80, 80),
+    (96, 96),
+    (128, 128),
+    (192, 192),
+    (256, 256),
+    (512, 512),
+];
 
 async fn find_offset(file: &mut BufReader<File>) -> Result<u64> {
     let mut magic = [0_u8; 4];
@@ -23,6 +40,33 @@ async fn find_offset(file: &mut BufReader<File>) -> Result<u64> {
     }
     file.rewind()?;
     Ok(0)
+}
+
+fn find_nearest_supported_dimension(width: u32, height: u32) -> (u32, u32) {
+    SUPPORTED_DIMENSIONS
+        .iter()
+        .min_by_key(|&&(w, h)| {
+            let width_diff = (w as i32 - width as i32).abs();
+            let height_diff = (h as i32 - height as i32).abs();
+            width_diff + height_diff
+        })
+        .cloned()
+        .unwrap_or((width, height))
+}
+
+fn normalize_image(image: DynamicImage) -> DynamicImage {
+    let (width, height) = image.dimensions();
+    let (new_width, new_height) = find_nearest_supported_dimension(width, height);
+
+    if (width, height) != (new_width, new_height) {
+        println!(
+            "Resizing image from {}x{} to {}x{}",
+            width, height, new_width, new_height
+        );
+        image.resize(new_width, new_height, FilterType::Lanczos3)
+    } else {
+        image
+    }
 }
 
 fn is_appimage(file: &mut BufReader<File>) -> bool {
@@ -47,6 +91,7 @@ async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
         }
         fs::remove_file(to).await?;
     }
+    xattr::set(from, "user.ManagedBy", b"soar")?;
     fs::symlink(from, to).await?;
 
     Ok(())
@@ -65,17 +110,26 @@ async fn remove_link(path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn remove_applinks(name: &str) -> Result<()> {
+pub async fn remove_applinks(name: &str, file_path: &Path) -> Result<()> {
     let home_data = home_data_path();
     let data_path = Path::new(&home_data);
-    let icon_path = data_path.join("icons").join(name).with_extension("png");
+
+    let original_icon_path = file_path.with_extension("png");
+    let (w, h) = image::image_dimensions(&original_icon_path)?;
+    let icon_path = data_path
+        .join("icons")
+        .join("hicolor")
+        .join(format!("{}x{}", w, h))
+        .join("apps")
+        .join(name)
+        .with_extension("png");
     let desktop_path = data_path
         .join("applications")
         .join(name)
         .with_extension("desktop");
 
-    remove_link(&icon_path).await?;
     remove_link(&desktop_path).await?;
+    remove_link(&icon_path).await?;
 
     Ok(())
 }
@@ -92,60 +146,137 @@ pub async fn extract_appimage(name: &str, file_path: &Path) -> Result<()> {
 
     let home_data = home_data_path();
     let data_path = Path::new(&home_data);
-    let final_icon_path = data_path.join("icons").join(name).with_extension("png");
-    let final_desktop_path = data_path
-        .join("applications")
-        .join(name)
-        .with_extension("desktop");
 
     for node in squashfs.files() {
         let node_path = node.fullpath.to_string_lossy();
-        if node_path.ends_with(".png") || node_path.ends_with(".desktop") {
-            if let InnerNode::File(file) = &node.inner {
-                let mut reader = squashfs.file(&file.basic).reader().bytes();
-                let extension = if node_path.ends_with(".png") {
-                    "png"
-                } else {
-                    "desktop"
-                };
-                let final_path = if extension == "png" {
-                    &final_icon_path
-                } else {
-                    &final_desktop_path
-                };
-                let output_path = file_path.with_extension(extension);
-                let output_file = File::create(&output_path);
-                let mut writer = BufWriter::new(output_file?);
-
-                if extension == "png" {
-                    while let Some(Ok(byte)) = reader.next() {
-                        writer.write_all(&[byte])?;
+        if !node_path.trim_start_matches("/").contains("/") && node_path.ends_with(".DirIcon")
+            || node_path.ends_with(".desktop")
+        {
+            let extension = if node_path.ends_with(".DirIcon") {
+                "png"
+            } else {
+                "desktop"
+            };
+            let output_path = file_path.with_extension(extension);
+            match resolve_and_extract(&squashfs, node, &output_path, &mut HashSet::new()) {
+                Ok(()) => {
+                    if extension == "png" {
+                        process_icon(&output_path, name, data_path).await?;
+                    } else {
+                        process_desktop(&output_path, name, data_path).await?;
                     }
-                } else {
-                    let mut buffer = Vec::new();
-                    while let Some(Ok(byte)) = reader.next() {
-                        buffer.push(byte);
-                    }
-                    let content = String::from_utf8(buffer)?;
-                    let content = content
-                        .lines()
-                        .map(|line| {
-                            if line.starts_with("Icon=") {
-                                format!("Icon={}", final_icon_path.to_string_lossy())
-                            } else {
-                                line.to_string()
-                            }
-                        })
-                        .collect::<Vec<String>>()
-                        .join("\n");
-
-                    writer.write_all(content.as_bytes())?;
                 }
-                xattr::set(&output_path, "user.ManagedBy", b"soar")?;
-                create_symlink(&output_path, final_path).await?;
+                Err(e) => eprintln!("Failed to extract {}: {}", node_path, e),
             }
         }
     }
 
+    Ok(())
+}
+
+fn resolve_and_extract(
+    squashfs: &FilesystemReader,
+    node: &Node<SquashfsFileReader>,
+    output_path: &Path,
+    visited: &mut HashSet<PathBuf>,
+) -> Result<()> {
+    match &node.inner {
+        InnerNode::File(file) => extract_file(squashfs, file, output_path),
+        InnerNode::Symlink(sym) => {
+            let target_path = sym.link.clone();
+            if !visited.insert(target_path.clone()) {
+                return Err(anyhow::anyhow!(
+                    "Uh oh. Bad symlink.. Infinite recursion detected..."
+                ));
+            }
+            if let Some(target_node) = squashfs
+                .files()
+                .find(|n| n.fullpath.strip_prefix("/").unwrap() == target_path)
+            {
+                resolve_and_extract(squashfs, target_node, output_path, visited)
+            } else {
+                Err(anyhow::anyhow!("Symlink target not found"))
+            }
+        }
+        _ => Err(anyhow::anyhow!("Unexpected node type")),
+    }
+}
+
+fn extract_file(
+    squashfs: &FilesystemReader,
+    file: &SquashfsFileReader,
+    output_path: &Path,
+) -> Result<()> {
+    let mut reader = squashfs.file(&file.basic).reader().bytes();
+    let output_file = File::create(output_path)?;
+    let mut buf_writer = BufWriter::new(output_file);
+    while let Some(Ok(byte)) = reader.next() {
+        buf_writer.write_all(&[byte])?;
+    }
+    Ok(())
+}
+
+async fn process_icon(output_path: &Path, name: &str, data_path: &Path) -> Result<()> {
+    let image = image::open(output_path)?;
+    let (orig_w, orig_h) = image.dimensions();
+
+    let normalized_image = normalize_image(image);
+    let (w, h) = normalized_image.dimensions();
+
+    if (w, h) != (orig_w, orig_h) {
+        normalized_image.save(output_path)?;
+    }
+    let final_path = data_path
+        .join("icons")
+        .join("hicolor")
+        .join(format!("{}x{}", w, h))
+        .join("apps")
+        .join(name)
+        .with_extension("png");
+
+    if let Some(parent) = final_path.parent() {
+        fs::create_dir_all(parent).await.context(anyhow::anyhow!(
+            "Failed to create icon directory at {}",
+            parent.to_string_lossy()
+        ))?;
+    }
+    create_symlink(output_path, &final_path).await?;
+    Ok(())
+}
+
+async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Result<()> {
+    let mut content = String::new();
+    File::open(output_path)?.read_to_string(&mut content)?;
+
+    let processed_content = content
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(|line| {
+            if line.starts_with("Icon=") {
+                format!("Icon={}", name)
+            } else if line.starts_with("Exec=") {
+                format!("Exec={}/{}", &*BIN_PATH.to_string_lossy(), name)
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    let mut writer = BufWriter::new(File::create(output_path)?);
+    writer.write_all(processed_content.as_bytes())?;
+
+    let final_path = data_path
+        .join("applications")
+        .join(name)
+        .with_extension("desktop");
+
+    if let Some(parent) = final_path.parent() {
+        fs::create_dir_all(parent).await.context(anyhow::anyhow!(
+            "Failed to create desktop files directory at {}",
+            parent.to_string_lossy()
+        ))?;
+    }
+    create_symlink(output_path, &final_path).await?;
     Ok(())
 }

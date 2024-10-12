@@ -35,8 +35,8 @@ impl Remover {
         let install_dir = package.get_install_dir(&installed.checksum);
         let install_path = package.get_install_path(&installed.checksum);
         self.remove_symlink(&install_path).await?;
+        remove_applinks(&package.bin_name, &install_path).await?;
         self.remove_package_path(&install_dir).await?;
-        remove_applinks(&package.bin_name).await?;
         installed_packages
             .unregister_package(&self.resolved_package)
             .await?;

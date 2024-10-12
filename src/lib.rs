@@ -6,8 +6,10 @@ use registry::PackageRegistry;
 
 use core::{
     config,
+    constant::BIN_PATH,
     util::{cleanup, setup_required_paths},
 };
+use std::{env, path::Path};
 
 mod cli;
 mod core;
@@ -19,6 +21,14 @@ pub async fn init() -> Result<()> {
     let args = Args::parse();
     let registry = PackageRegistry::new().await?;
     setup_required_paths().await?;
+
+    let path_env = env::var("PATH")?;
+    if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
+        eprintln!(
+            "{} is not in $PATH. Please add it to $PATH to use installed binaries.",
+            &*BIN_PATH.to_string_lossy()
+        );
+    }
 
     match args.command {
         Commands::Install { packages, force } => {

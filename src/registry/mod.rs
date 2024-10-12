@@ -54,8 +54,15 @@ impl PackageRegistry {
             };
 
             let mut de = rmp_serde::Deserializer::new(&content[..]);
-            let packages = RepositoryPackages::deserialize(&mut de)?;
-
+            let packages = match RepositoryPackages::deserialize(&mut de) {
+                Ok(packages) => packages,
+                Err(_) => {
+                    eprintln!("Registry is invalid. Refetching...");
+                    let content = fetcher.execute(repo).await?;
+                    let mut de = rmp_serde::Deserializer::new(&content[..]);
+                    RepositoryPackages::deserialize(&mut de)?
+                }
+            };
             storage.add_repository(&repo.name, packages);
         }
 

@@ -171,6 +171,13 @@ impl Installer {
         }
 
         println!("{}: Installed package.", prefix);
+        if !package.note.is_empty() {
+            println!(
+                "{}: [Note] {}",
+                prefix,
+                package.note.replace("<br>", "\n     ")
+            );
+        }
 
         Ok(())
     }
