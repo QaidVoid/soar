@@ -190,7 +190,7 @@ impl Installer {
         }
         tokio::fs::rename(&temp_path, &install_path).await?;
         tokio::fs::set_permissions(&install_path, Permissions::from_mode(0o755)).await?;
-        xattr::set(install_path, "user.ManagedBy", b"soar")?;
+        xattr::set(install_path, "user.managed_by", b"soar")?;
 
         Ok(())
     }

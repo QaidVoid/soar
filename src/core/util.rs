@@ -207,7 +207,7 @@ pub async fn cleanup() -> Result<()> {
 
         while let Some(entry) = tree.next_entry().await? {
             let path = entry.path();
-            if xattr::get(&path, "user.ManagedBy")?.as_deref() != Some(b"soar") {
+            if xattr::get(&path, "user.managed_by")?.as_deref() != Some(b"soar") {
                 continue;
             };
 

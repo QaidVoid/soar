@@ -31,7 +31,7 @@ impl Runner {
         let package_name = &package.full_name('/');
 
         if self.install_path.exists() {
-            if xattr::get(&self.install_path, "user.ManagedBy")?.as_deref() != Some(b"soar") {
+            if xattr::get(&self.install_path, "user.managed_by")?.as_deref() != Some(b"soar") {
                 return Err(anyhow::anyhow!(
                     "Path {} is not managed by soar. Exiting.",
                     self.install_path.to_string_lossy()
@@ -121,7 +121,7 @@ impl Runner {
         }
         tokio::fs::rename(&temp_path, &install_path).await?;
         tokio::fs::set_permissions(&install_path, Permissions::from_mode(0o755)).await?;
-        xattr::set(install_path, "user.ManagedBy", b"soar")?;
+        xattr::set(install_path, "user.managed_by", b"soar")?;
 
         Ok(())
     }

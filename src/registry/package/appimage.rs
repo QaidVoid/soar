@@ -10,7 +10,10 @@ use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use tokio::fs;
 
-use crate::core::{constant::BIN_PATH, util::home_data_path};
+use crate::core::{
+    constant::{BIN_PATH, PACKAGES_PATH},
+    util::home_data_path,
+};
 
 const SUPPORTED_DIMENSIONS: &[(u32, u32)] = &[
     (16, 16),
@@ -83,15 +86,12 @@ fn is_appimage(file: &mut BufReader<File>) -> bool {
 
 async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
     if to.exists() {
-        if to.read_link().is_ok()
-            && xattr::get_deref(from, "user.ManagedBy")?.as_deref() != Some(b"soar")
-        {
+        if to.read_link().is_ok() && !to.read_link()?.starts_with(&*PACKAGES_PATH) {
             eprintln!("{} is not managed by soar", to.to_string_lossy());
             return Ok(());
         }
         fs::remove_file(to).await?;
     }
-    xattr::set(from, "user.ManagedBy", b"soar")?;
     fs::symlink(from, to).await?;
 
     Ok(())
@@ -99,9 +99,7 @@ async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
 
 async fn remove_link(path: &Path) -> Result<()> {
     if path.exists() {
-        if path.read_link().is_ok()
-            && xattr::get_deref(path, "user.ManagedBy")?.as_deref() != Some(b"soar")
-        {
+        if path.read_link().is_ok() && !path.read_link()?.starts_with(&*PACKAGES_PATH) {
             eprintln!("{} is not managed by soar", path.to_string_lossy());
             return Ok(());
         }
@@ -125,7 +123,7 @@ pub async fn remove_applinks(name: &str, file_path: &Path) -> Result<()> {
         .with_extension("png");
     let desktop_path = data_path
         .join("applications")
-        .join(name)
+        .join(format!("soar-{name}"))
         .with_extension("desktop");
 
     remove_link(&desktop_path).await?;
@@ -149,8 +147,8 @@ pub async fn extract_appimage(name: &str, file_path: &Path) -> Result<()> {
 
     for node in squashfs.files() {
         let node_path = node.fullpath.to_string_lossy();
-        if !node_path.trim_start_matches("/").contains("/") && node_path.ends_with(".DirIcon")
-            || node_path.ends_with(".desktop")
+        if !node_path.trim_start_matches("/").contains("/")
+            && (node_path.ends_with(".DirIcon") || node_path.ends_with(".desktop"))
         {
             let extension = if node_path.ends_with(".DirIcon") {
                 "png"
@@ -256,6 +254,8 @@ async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Re
                 format!("Icon={}", name)
             } else if line.starts_with("Exec=") {
                 format!("Exec={}/{}", &*BIN_PATH.to_string_lossy(), name)
+            } else if line.starts_with("TryExec=") {
+                format!("TryExec={}/{}", &*BIN_PATH.to_string_lossy(), name)
             } else {
                 line.to_string()
             }
@@ -268,7 +268,7 @@ async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Re
 
     let final_path = data_path
         .join("applications")
-        .join(name)
+        .join(format!("soar-{name}"))
         .with_extension("desktop");
 
     if let Some(parent) = final_path.parent() {
@@ -277,6 +277,7 @@ async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Re
             parent.to_string_lossy()
         ))?;
     }
+
     create_symlink(output_path, &final_path).await?;
     Ok(())
 }
