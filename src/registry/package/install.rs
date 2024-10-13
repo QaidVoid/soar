@@ -156,11 +156,7 @@ impl Installer {
         self.save_file().await?;
         self.symlink_bin(&installed_packages).await?;
         if self.resolved_package.root_path == RootPath::Pkg {
-            if let Err(e) = extract_appimage(&package.bin_name, &self.install_path).await {
-                if e.to_string() != "NOT_APPIMAGE" {
-                    return Err(e);
-                }
-            };
+            extract_appimage(package, &self.install_path).await?;
         }
 
         {

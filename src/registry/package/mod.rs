@@ -33,6 +33,7 @@ pub struct Package {
     pub build_log: String,
     pub category: String,
     pub extra_bins: String,
+    pub icon: String,
     pub variant: Option<String>,
 }
 

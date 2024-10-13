@@ -8,12 +8,14 @@ use std::{
 use anyhow::{Context, Result};
 use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
-use tokio::fs;
+use tokio::{fs, try_join};
 
 use crate::core::{
     constant::{BIN_PATH, PACKAGES_PATH},
-    util::home_data_path,
+    util::{download, home_data_path},
 };
+
+use super::Package;
 
 const SUPPORTED_DIMENSIONS: &[(u32, u32)] = &[
     (16, 16),
@@ -108,7 +110,7 @@ async fn remove_link(path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn remove_applinks(name: &str, file_path: &Path) -> Result<()> {
+pub async fn remove_applinks(name: &str, bin_name: &str, file_path: &Path) -> Result<()> {
     let home_data = home_data_path();
     let data_path = Path::new(&home_data);
 
@@ -119,12 +121,11 @@ pub async fn remove_applinks(name: &str, file_path: &Path) -> Result<()> {
         .join("hicolor")
         .join(format!("{}x{}", w, h))
         .join("apps")
-        .join(name)
+        .join(bin_name)
         .with_extension("png");
     let desktop_path = data_path
         .join("applications")
-        .join(format!("soar-{name}"))
-        .with_extension("desktop");
+        .join(format!("soar-{name}.desktop"));
 
     remove_link(&desktop_path).await?;
     remove_link(&icon_path).await?;
@@ -132,11 +133,12 @@ pub async fn remove_applinks(name: &str, file_path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn extract_appimage(name: &str, file_path: &Path) -> Result<()> {
+pub async fn extract_appimage(package: &Package, file_path: &Path) -> Result<()> {
     let mut file = BufReader::new(File::open(file_path)?);
 
     if !is_appimage(&mut file) {
-        return Err(anyhow::anyhow!("NOT_APPIMAGE"));
+        use_remote_files(package, file_path).await?;
+        return Ok(());
     }
 
     let offset = find_offset(&mut file).await?;
@@ -159,9 +161,10 @@ pub async fn extract_appimage(name: &str, file_path: &Path) -> Result<()> {
             match resolve_and_extract(&squashfs, node, &output_path, &mut HashSet::new()) {
                 Ok(()) => {
                     if extension == "png" {
-                        process_icon(&output_path, name, data_path).await?;
+                        process_icon(&output_path, &package.bin_name, data_path).await?;
                     } else {
-                        process_desktop(&output_path, name, data_path).await?;
+                        process_desktop(&output_path, &package.bin_name, &package.name, data_path)
+                            .await?;
                     }
                 }
                 Err(e) => eprintln!("Failed to extract {}: {}", node_path, e),
@@ -242,7 +245,12 @@ async fn process_icon(output_path: &Path, name: &str, data_path: &Path) -> Resul
     Ok(())
 }
 
-async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Result<()> {
+async fn process_desktop(
+    output_path: &Path,
+    bin_name: &str,
+    name: &str,
+    data_path: &Path,
+) -> Result<()> {
     let mut content = String::new();
     File::open(output_path)?.read_to_string(&mut content)?;
 
@@ -251,11 +259,11 @@ async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Re
         .filter(|line| !line.starts_with('#'))
         .map(|line| {
             if line.starts_with("Icon=") {
-                format!("Icon={}", name)
+                format!("Icon={}", bin_name)
             } else if line.starts_with("Exec=") {
-                format!("Exec={}/{}", &*BIN_PATH.to_string_lossy(), name)
+                format!("Exec={}/{}", &*BIN_PATH.to_string_lossy(), bin_name)
             } else if line.starts_with("TryExec=") {
-                format!("TryExec={}/{}", &*BIN_PATH.to_string_lossy(), name)
+                format!("TryExec={}/{}", &*BIN_PATH.to_string_lossy(), bin_name)
             } else {
                 line.to_string()
             }
@@ -268,8 +276,7 @@ async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Re
 
     let final_path = data_path
         .join("applications")
-        .join(format!("soar-{name}"))
-        .with_extension("desktop");
+        .join(format!("soar-{name}.desktop"));
 
     if let Some(parent) = final_path.parent() {
         fs::create_dir_all(parent).await.context(anyhow::anyhow!(
@@ -279,5 +286,39 @@ async fn process_desktop(output_path: &Path, name: &str, data_path: &Path) -> Re
     }
 
     create_symlink(output_path, &final_path).await?;
+    Ok(())
+}
+
+pub async fn use_remote_files(package: &Package, file_path: &Path) -> Result<()> {
+    let home_data = home_data_path();
+    let data_path = Path::new(&home_data);
+
+    let icon_output_path = file_path.with_extension("png");
+    let desktop_output_path = file_path.with_extension("desktop");
+
+    let icon_url = &package.icon;
+    let (base_url, _) = package.icon.rsplit_once('/').unwrap();
+    let desktop_url = format!("{}/{}.desktop", base_url, &package.bin_name);
+
+    let (icon_content, desktop_content) = try_join!(
+        download(icon_url, "image"),
+        download(&desktop_url, "desktop file")
+    )?;
+
+    try_join!(
+        fs::write(&icon_output_path, &icon_content),
+        fs::write(&desktop_output_path, &desktop_content)
+    )?;
+
+    try_join!(
+        process_icon(&icon_output_path, &package.bin_name, data_path),
+        process_desktop(
+            &desktop_output_path,
+            &package.bin_name,
+            &package.name,
+            data_path
+        )
+    )?;
+
     Ok(())
 }
