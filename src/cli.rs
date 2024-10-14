@@ -31,17 +31,17 @@ pub enum Commands {
 
         /// Set portable dir for home & config
         #[arg(required = false)]
-        #[arg(short, long)]
+        #[arg(short, long, num_args = 0..=1)]
         portable: Option<PathBuf>,
 
         /// Set portable home
         #[arg(required = false)]
-        #[arg(long)]
+        #[arg(long, num_args = 0..=1)]
         portable_home: Option<PathBuf>,
 
         /// Set portable config
         #[arg(required = false)]
-        #[arg(long)]
+        #[arg(long, num_args = 0..=1)]
         portable_config: Option<PathBuf>,
     },
 

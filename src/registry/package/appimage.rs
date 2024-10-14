@@ -335,8 +335,8 @@ pub async fn setup_portable_dir(
 
     let (portable_home, portable_config) = if let Some(portable) = portable {
         (
-            Some(portable.join(&bin_name).with_extension("home")),
-            Some(portable.join(&bin_name).with_extension("config")),
+            Some(portable.join(bin_name).with_extension("home")),
+            Some(portable.join(bin_name).with_extension("config")),
         )
     } else {
         (portable_home, portable_config)
@@ -350,6 +350,8 @@ pub async fn setup_portable_dir(
                 &portable_home.to_string_lossy()
             ))?;
         create_symlink(&portable_home, &pkg_home).await?;
+    } else {
+        fs::create_dir(&pkg_home).await?;
     }
     if let Some(portable_config) = portable_config {
         fs::create_dir_all(&portable_config)
@@ -359,6 +361,8 @@ pub async fn setup_portable_dir(
                 &portable_config.to_string_lossy()
             ))?;
         create_symlink(&portable_config, &pkg_config).await?;
+    } else {
+        fs::create_dir(&pkg_config).await?;
     };
 
     Ok(())
