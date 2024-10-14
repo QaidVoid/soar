@@ -52,11 +52,23 @@ impl ResolvedPackage {
         force: bool,
         is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
+        portable: Option<PathBuf>,
+        portable_home: Option<PathBuf>,
+        portable_config: Option<PathBuf>,
     ) -> Result<()> {
         let install_path = self.package.get_install_path(&self.package.bsum);
         let mut installer = Installer::new(self, install_path);
         installer
-            .execute(idx, total, installed_packages, force, is_update)
+            .execute(
+                idx,
+                total,
+                installed_packages,
+                force,
+                is_update,
+                portable,
+                portable_home,
+                portable_config,
+            )
             .await?;
         Ok(())
     }

@@ -77,6 +77,9 @@ impl Updater {
                         true,
                         true,
                         registry.installed_packages.clone(),
+                        None,
+                        None,
+                        None,
                     )
                     .await?;
                 update_count += 1;

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -14,7 +16,7 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Install packages; supports '--force' flag
+    /// Install packages
     #[command(arg_required_else_help = true)]
     #[clap(name = "install", visible_alias = "i", alias = "add")]
     Install {
@@ -26,6 +28,21 @@ pub enum Commands {
         #[arg(required = false)]
         #[arg(short, long)]
         force: bool,
+
+        /// Set portable dir for home & config
+        #[arg(required = false)]
+        #[arg(short, long)]
+        portable: Option<PathBuf>,
+
+        /// Set portable home
+        #[arg(required = false)]
+        #[arg(long)]
+        portable_home: Option<PathBuf>,
+
+        /// Set portable config
+        #[arg(required = false)]
+        #[arg(long)]
+        portable_config: Option<PathBuf>,
     },
 
     /// Search package

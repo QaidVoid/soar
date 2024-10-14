@@ -322,3 +322,44 @@ pub async fn use_remote_files(package: &Package, file_path: &Path) -> Result<()>
 
     Ok(())
 }
+
+pub async fn setup_portable_dir(
+    bin_name: &str,
+    package_path: &Path,
+    portable: Option<PathBuf>,
+    portable_home: Option<PathBuf>,
+    portable_config: Option<PathBuf>,
+) -> Result<()> {
+    let pkg_config = package_path.with_extension("config");
+    let pkg_home = package_path.with_extension("home");
+
+    let (portable_home, portable_config) = if let Some(portable) = portable {
+        (
+            Some(portable.join(&bin_name).with_extension("home")),
+            Some(portable.join(&bin_name).with_extension("config")),
+        )
+    } else {
+        (portable_home, portable_config)
+    };
+
+    if let Some(portable_home) = portable_home {
+        fs::create_dir_all(&portable_home)
+            .await
+            .context(anyhow::anyhow!(
+                "Failed to create or access directory at {}",
+                &portable_home.to_string_lossy()
+            ))?;
+        create_symlink(&portable_home, &pkg_home).await?;
+    }
+    if let Some(portable_config) = portable_config {
+        fs::create_dir_all(&portable_config)
+            .await
+            .context(anyhow::anyhow!(
+                "Failed to create or access directory at {}",
+                &portable_config.to_string_lossy()
+            ))?;
+        create_symlink(&portable_config, &pkg_config).await?;
+    };
+
+    Ok(())
+}

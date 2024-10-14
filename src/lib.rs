@@ -25,14 +25,35 @@ pub async fn init() -> Result<()> {
     let path_env = env::var("PATH")?;
     if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
         eprintln!(
-            "{} is not in $PATH. Please add it to $PATH to use installed binaries.",
+            "{} is not in PATH. Please add it to PATH to use installed binaries.",
             &*BIN_PATH.to_string_lossy()
         );
     }
 
     match args.command {
-        Commands::Install { packages, force } => {
-            registry.install_packages(&packages, force, false).await?;
+        Commands::Install {
+            packages,
+            force,
+            portable,
+            portable_home,
+            portable_config,
+        } => {
+            if portable.is_some() && (portable_home.is_some() || portable_config.is_some()) {
+                eprintln!(
+                    "Error: --portable cannot be used with --portable-home or --portable-config"
+                );
+                std::process::exit(1);
+            }
+            registry
+                .install_packages(
+                    &packages,
+                    force,
+                    false,
+                    portable,
+                    portable_home,
+                    portable_config,
+                )
+                .await?;
         }
         Commands::Sync => {
             cleanup().await?;

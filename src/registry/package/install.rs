@@ -11,7 +11,10 @@ use crate::{
     },
     registry::{
         installed::InstalledPackages,
-        package::{appimage::extract_appimage, RootPath},
+        package::{
+            appimage::{extract_appimage, setup_portable_dir},
+            RootPath,
+        },
     },
 };
 
@@ -43,6 +46,9 @@ impl Installer {
         installed_packages: Arc<Mutex<InstalledPackages>>,
         force: bool,
         is_update: bool,
+        portable: Option<PathBuf>,
+        portable_home: Option<PathBuf>,
+        portable_config: Option<PathBuf>,
     ) -> Result<()> {
         let package = &self.resolved_package.package;
         let is_installed = installed_packages
@@ -157,6 +163,14 @@ impl Installer {
         self.symlink_bin(&installed_packages).await?;
         if self.resolved_package.root_path == RootPath::Pkg {
             extract_appimage(package, &self.install_path).await?;
+            setup_portable_dir(
+                &package.bin_name,
+                &self.install_path,
+                portable,
+                portable_home,
+                portable_config,
+            )
+            .await?;
         }
 
         {

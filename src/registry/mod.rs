@@ -1,4 +1,4 @@
-use std::{fmt::Display, io::Write, sync::Arc};
+use std::{fmt::Display, io::Write, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 
@@ -87,6 +87,9 @@ impl PackageRegistry {
         package_names: &[String],
         force: bool,
         is_update: bool,
+        portable: Option<PathBuf>,
+        portable_home: Option<PathBuf>,
+        portable_config: Option<PathBuf>,
     ) -> Result<()> {
         self.storage
             .install_packages(
@@ -94,6 +97,9 @@ impl PackageRegistry {
                 force,
                 is_update,
                 self.installed_packages.clone(),
+                portable,
+                portable_home,
+                portable_config,
             )
             .await
     }
@@ -258,6 +264,9 @@ impl PackageRegistry {
                             true,
                             false,
                             self.installed_packages.clone(),
+                            None,
+                            None,
+                            None,
                         )
                         .await?;
 

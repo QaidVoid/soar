@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     io::Write,
+    path::PathBuf,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -82,6 +83,9 @@ impl PackageStorage {
         force: bool,
         is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
+        portable: Option<PathBuf>,
+        portable_home: Option<PathBuf>,
+        portable_config: Option<PathBuf>,
     ) -> Result<()> {
         let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
             .iter()
@@ -100,10 +104,22 @@ impl PackageStorage {
                 let package = package.clone();
                 let ic = installed_count.clone();
                 let installed_packages = installed_packages.clone();
+                let portable = portable.clone();
+                let portable_home = portable_home.clone();
+                let portable_config = portable_config.clone();
 
                 let handle = tokio::spawn(async move {
                     if let Err(e) = package
-                        .install(idx, pkgs_len, force, is_update, installed_packages)
+                        .install(
+                            idx,
+                            pkgs_len,
+                            force,
+                            is_update,
+                            installed_packages,
+                            portable,
+                            portable_home,
+                            portable_config,
+                        )
                         .await
                     {
                         eprintln!("{}", e);
@@ -128,6 +144,9 @@ impl PackageStorage {
                         force,
                         is_update,
                         installed_packages.clone(),
+                        portable.clone(),
+                        portable_home.clone(),
+                        portable_config.clone(),
                     )
                     .await
                 {

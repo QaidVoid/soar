@@ -241,6 +241,12 @@ impl InstalledPackages {
             let symlink_path = &BIN_PATH.join(&installed.bin_name);
 
             if symlink_path.exists() {
+                if xattr::get_deref(symlink_path, "user.managed_by")?.as_deref() != Some(b"soar") {
+                    return Err(anyhow::anyhow!(
+                        "{} is not managed by soar",
+                        symlink_path.to_string_lossy()
+                    ));
+                }
                 fs::remove_file(symlink_path).await?;
             }
 
