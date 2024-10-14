@@ -10,9 +10,13 @@ use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use tokio::{fs, try_join};
 
-use crate::core::{
-    constant::{BIN_PATH, PACKAGES_PATH},
-    util::{download, home_data_path},
+use crate::{
+    core::{
+        color::{Color, ColorExt},
+        constant::{BIN_PATH, PACKAGES_PATH},
+        util::{download, home_data_path},
+    },
+    error, info,
 };
 
 use super::Package;
@@ -64,7 +68,7 @@ fn normalize_image(image: DynamicImage) -> DynamicImage {
     let (new_width, new_height) = find_nearest_supported_dimension(width, height);
 
     if (width, height) != (new_width, new_height) {
-        println!(
+        info!(
             "Resizing image from {}x{} to {}x{}",
             width, height, new_width, new_height
         );
@@ -89,7 +93,10 @@ fn is_appimage(file: &mut BufReader<File>) -> bool {
 async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
     if to.exists() {
         if to.read_link().is_ok() && !to.read_link()?.starts_with(&*PACKAGES_PATH) {
-            eprintln!("{} is not managed by soar", to.to_string_lossy());
+            error!(
+                "{} is not managed by soar",
+                to.to_string_lossy().color(Color::Blue)
+            );
             return Ok(());
         }
         fs::remove_file(to).await?;
@@ -102,7 +109,10 @@ async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
 async fn remove_link(path: &Path) -> Result<()> {
     if path.exists() {
         if path.read_link().is_ok() && !path.read_link()?.starts_with(&*PACKAGES_PATH) {
-            eprintln!("{} is not managed by soar", path.to_string_lossy());
+            error!(
+                "{} is not managed by soar",
+                path.to_string_lossy().color(Color::Blue)
+            );
             return Ok(());
         }
         fs::remove_file(path).await?;
@@ -167,7 +177,7 @@ pub async fn extract_appimage(package: &Package, file_path: &Path) -> Result<()>
                             .await?;
                     }
                 }
-                Err(e) => eprintln!("Failed to extract {}: {}", node_path, e),
+                Err(e) => error!("Failed to extract {}: {}", node_path.color(Color::Blue), e),
             }
         }
     }
@@ -238,7 +248,7 @@ async fn process_icon(output_path: &Path, name: &str, data_path: &Path) -> Resul
     if let Some(parent) = final_path.parent() {
         fs::create_dir_all(parent).await.context(anyhow::anyhow!(
             "Failed to create icon directory at {}",
-            parent.to_string_lossy()
+            parent.to_string_lossy().color(Color::Blue)
         ))?;
     }
     create_symlink(output_path, &final_path).await?;
@@ -281,7 +291,7 @@ async fn process_desktop(
     if let Some(parent) = final_path.parent() {
         fs::create_dir_all(parent).await.context(anyhow::anyhow!(
             "Failed to create desktop files directory at {}",
-            parent.to_string_lossy()
+            parent.to_string_lossy().color(Color::Blue)
         ))?;
     }
 
@@ -334,31 +344,30 @@ pub async fn setup_portable_dir(
     let pkg_home = package_path.with_extension("home");
 
     let (portable_home, portable_config) = if let Some(portable) = portable {
-        (
-            Some(portable.join(bin_name).with_extension("home")),
-            Some(portable.join(bin_name).with_extension("config")),
-        )
+        (Some(portable.clone()), Some(portable.clone()))
     } else {
         (portable_home, portable_config)
     };
 
     if let Some(portable_home) = portable_home {
+        let portable_home = portable_home.join(bin_name).with_extension("home");
         fs::create_dir_all(&portable_home)
             .await
             .context(anyhow::anyhow!(
                 "Failed to create or access directory at {}",
-                &portable_home.to_string_lossy()
+                &portable_home.to_string_lossy().color(Color::Blue)
             ))?;
         create_symlink(&portable_home, &pkg_home).await?;
     } else {
         fs::create_dir(&pkg_home).await?;
     }
     if let Some(portable_config) = portable_config {
+        let portable_config = portable_config.join(bin_name).with_extension("config");
         fs::create_dir_all(&portable_config)
             .await
             .context(anyhow::anyhow!(
                 "Failed to create or access directory at {}",
-                &portable_config.to_string_lossy()
+                &portable_config.to_string_lossy().color(Color::Blue)
             ))?;
         create_symlink(&portable_config, &pkg_config).await?;
     } else {

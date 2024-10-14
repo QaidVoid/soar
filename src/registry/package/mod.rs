@@ -12,7 +12,13 @@ use remove::Remover;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::core::constant::PACKAGES_PATH;
+use crate::{
+    core::{
+        color::{Color, ColorExt},
+        constant::PACKAGES_PATH,
+    },
+    error,
+};
 
 use super::installed::InstalledPackages;
 
@@ -126,7 +132,7 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
                     "bin" => Some(RootPath::Bin),
                     "pkg" => Some(RootPath::Pkg),
                     _ => {
-                        eprintln!("Invalid root path provided for {}", query);
+                        error!("Invalid root path provided for {}", query.color(Color::Red));
                         std::process::exit(-1);
                     }
                 },

@@ -18,13 +18,16 @@ use tokio::{
 
 use crate::{
     core::{
+        color::{Color, ColorExt},
         config::CONFIG,
         util::{build_path, format_bytes, get_platform, home_cache_path},
     },
+    error,
     registry::{
         installed::InstalledPackages,
         package::{parse_package_query, ResolvedPackage},
     },
+    success, warn,
 };
 
 use super::{
@@ -122,7 +125,7 @@ impl PackageStorage {
                         )
                         .await
                     {
-                        eprintln!("{}", e);
+                        error!("{}", e);
                     } else {
                         ic.fetch_add(1, Ordering::Relaxed);
                     };
@@ -150,16 +153,16 @@ impl PackageStorage {
                     )
                     .await
                 {
-                    eprintln!("{}", e);
+                    error!("{}", e);
                 } else {
                     installed_count.fetch_add(1, Ordering::Relaxed);
                 };
             }
         }
-        println!(
+        success!(
             "Installed {}/{} packages",
-            installed_count.load(Ordering::Relaxed),
-            resolved_packages.len()
+            installed_count.load(Ordering::Relaxed).color(Color::Blue),
+            resolved_packages.len().color(Color::BrightBlue)
         );
         Ok(())
     }
@@ -342,16 +345,16 @@ impl PackageStorage {
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
                 "Error fetching log from {} [{}]",
-                url,
-                response.status()
+                url.color(Color::Blue),
+                response.status().color(Color::Red)
             ));
         }
 
         let content_length = response.content_length().unwrap_or_default();
         if content_length > 1_048_576 {
-            print!(
+            warn!(
                 "The log file is too large ({}). Do you really want to download and view it (y/N)? ",
-                format_bytes(content_length)
+                format_bytes(content_length).color(Color::Magenta)
             );
 
             std::io::stdout().flush()?;
@@ -366,8 +369,8 @@ impl PackageStorage {
 
         println!(
             "Fetching log from {} [{}]",
-            url,
-            format_bytes(response.content_length().unwrap_or_default())
+            url.color(Color::Blue),
+            format_bytes(response.content_length().unwrap_or_default()).color(Color::Magenta)
         );
 
         let mut stream = response.bytes_stream();

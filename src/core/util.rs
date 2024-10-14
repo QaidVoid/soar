@@ -13,7 +13,10 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use super::constant::{BIN_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH};
+use super::{
+    color::{Color, ColorExt},
+    constant::{BIN_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH},
+};
 
 pub fn home_path() -> String {
     env::var("HOME").unwrap_or_else(|_| {
@@ -140,26 +143,32 @@ pub async fn validate_checksum(checksum: &str, file_path: &Path) -> Result<()> {
 
 pub async fn setup_required_paths() -> Result<()> {
     if !BIN_PATH.exists() {
-        fs::create_dir_all(&*BIN_PATH).await.context(format!(
-            "Failed to create bin directory {}",
-            BIN_PATH.to_string_lossy()
-        ))?;
+        fs::create_dir_all(&*BIN_PATH).await.with_context(|| {
+            format!(
+                "Failed to create bin directory {}",
+                BIN_PATH.to_string_lossy().color(Color::Blue)
+            )
+        })?;
     }
 
     if !INSTALL_TRACK_PATH.exists() {
         fs::create_dir_all(&*INSTALL_TRACK_PATH)
             .await
-            .context(format!(
-                "Failed to create path: {}",
-                INSTALL_TRACK_PATH.to_string_lossy()
-            ))?;
+            .with_context(|| {
+                format!(
+                    "Failed to create installs directory: {}",
+                    INSTALL_TRACK_PATH.to_string_lossy().color(Color::Blue)
+                )
+            })?;
     }
 
     if !PACKAGES_PATH.exists() {
-        fs::create_dir_all(&*PACKAGES_PATH).await.context(format!(
-            "Failed to create path: {}",
-            PACKAGES_PATH.to_string_lossy()
-        ))?;
+        fs::create_dir_all(&*PACKAGES_PATH).await.with_context(|| {
+            format!(
+                "Failed to create packages directory: {}",
+                PACKAGES_PATH.to_string_lossy().color(Color::Blue)
+            )
+        })?;
     }
 
     Ok(())
@@ -172,9 +181,9 @@ pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
     if !response.status().is_success() {
         return Err(anyhow::anyhow!(
             "Error fetching {} from {} [{}]",
-            what,
-            url,
-            response.status()
+            what.color(Color::Cyan),
+            url.color(Color::Blue),
+            response.status().color(Color::Red)
         ));
     }
 
@@ -182,8 +191,8 @@ pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
 
     println!(
         "Fetching {} from {} [{}]",
-        what,
-        url,
+        what.color(Color::Cyan),
+        url.color(Color::Blue),
         format_bytes(response.content_length().unwrap_or_default())
     );
 

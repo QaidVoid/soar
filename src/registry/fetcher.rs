@@ -5,6 +5,7 @@ use serde::Deserialize;
 use tokio::fs;
 
 use crate::core::{
+    color::{Color, ColorExt},
     config::Repository,
     util::{download, get_platform},
 };
@@ -76,9 +77,12 @@ impl RegistryFetcher {
                 .context("Failed to create registry directory")?;
         }
 
-        fs::write(&path, &content)
-            .await
-            .with_context(|| format!("Failed to write registry for {}", repository.name))?;
+        fs::write(&path, &content).await.with_context(|| {
+            format!(
+                "Failed to write registry for {}",
+                repository.name.clone().color(Color::Yellow)
+            )
+        })?;
 
         Ok(content)
     }

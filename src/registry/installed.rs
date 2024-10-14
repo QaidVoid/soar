@@ -7,6 +7,7 @@ use tokio::fs;
 
 use crate::{
     core::{
+        color::{Color, ColorExt},
         constant::{BIN_PATH, INSTALL_TRACK_PATH},
         util::{format_bytes, parse_size},
     },
@@ -141,9 +142,10 @@ impl InstalledPackages {
         let content = rmp_serde::to_vec(&self)
             .context("Failed to serialize installed packages to MessagePack")?;
 
-        fs::write(&path, content)
-            .await
-            .context(format!("Failed to write to {}", path.to_string_lossy()))?;
+        fs::write(&path, content).await.context(format!(
+            "Failed to write to {}",
+            path.to_string_lossy().color(Color::Red)
+        ))?;
 
         Ok(())
     }
@@ -179,13 +181,15 @@ impl InstalledPackages {
 
         resolved_packages.iter().for_each(|package| {
             println!(
-                "- [{}] {}:{}-{} ({}) ({})",
-                package.root_path,
-                package.name,
-                package.name,
-                package.version,
-                package.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                format_bytes(package.size)
+                "- [{}] {1}:{1}-{2} ({3}) ({4})",
+                package.root_path.clone().color(Color::BrightGreen),
+                package.name.clone().color(Color::Blue),
+                package.version.clone().color(Color::Green),
+                package
+                    .timestamp
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .color(Color::Yellow),
+                format_bytes(package.size).color(Color::Magenta)
             );
 
             match package.root_path {
@@ -200,22 +204,27 @@ impl InstalledPackages {
         println!(
             "{:<4} base: {} ({})",
             "",
-            total_base.0,
+            total_base.0.color(Color::BrightGreen),
             format_bytes(total_base.1)
         );
         println!(
             "{:<4} bin: {} ({})",
             "",
-            total_bin.0,
+            total_bin.0.color(Color::BrightBlue),
             format_bytes(total_bin.1)
         );
         println!(
             "{:<4} pkg: {} ({})",
             "",
-            total_pkg.0,
+            total_pkg.0.color(Color::BrightRed),
             format_bytes(total_pkg.1)
         );
-        println!("{:<2} Total: {} ({})", "", total.0, format_bytes(total.1));
+        println!(
+            "{:<2} Total: {} ({})",
+            "",
+            total.0.color(Color::BrightYellow),
+            format_bytes(total.1)
+        );
 
         Ok(())
     }
@@ -244,7 +253,7 @@ impl InstalledPackages {
                 if xattr::get_deref(symlink_path, "user.managed_by")?.as_deref() != Some(b"soar") {
                     return Err(anyhow::anyhow!(
                         "{} is not managed by soar",
-                        symlink_path.to_string_lossy()
+                        symlink_path.to_string_lossy().color(Color::Blue)
                     ));
                 }
                 fs::remove_file(symlink_path).await?;
@@ -254,8 +263,8 @@ impl InstalledPackages {
                 .await
                 .context(format!(
                     "Failed to link {} to {}",
-                    install_path.to_string_lossy(),
-                    symlink_path.to_string_lossy()
+                    install_path.to_string_lossy().color(Color::Blue),
+                    symlink_path.to_string_lossy().color(Color::Blue)
                 ))?;
         } else {
             return Err(anyhow::anyhow!("NOT_INSTALLED"));

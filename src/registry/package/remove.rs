@@ -4,8 +4,12 @@ use anyhow::{Context, Result};
 use tokio::fs;
 
 use crate::{
-    core::constant::BIN_PATH,
+    core::{
+        color::{Color, ColorExt},
+        constant::BIN_PATH,
+    },
     registry::{installed::InstalledPackages, package::appimage::remove_applinks},
+    success,
 };
 
 use super::ResolvedPackage;
@@ -27,8 +31,8 @@ impl Remover {
         let Some(installed) = installed else {
             return Err(anyhow::anyhow!(
                 "Package {}-{} is not installed.",
-                package.full_name('/'),
-                package.version
+                package.full_name('/').color(Color::Blue),
+                package.version.clone().color(Color::Green)
             ));
         };
 
@@ -41,7 +45,10 @@ impl Remover {
             .unregister_package(&self.resolved_package)
             .await?;
 
-        println!("Package {} removed successfully.", package.full_name('/'));
+        success!(
+            "Package {} removed successfully.",
+            package.full_name('/').color(Color::Blue)
+        );
 
         Ok(())
     }
@@ -63,7 +70,7 @@ impl Remover {
         if install_dir.exists() {
             fs::remove_dir_all(&install_dir).await.context(format!(
                 "Failed to remove package file: {}",
-                install_dir.to_string_lossy()
+                install_dir.to_string_lossy().color(Color::Blue)
             ))?;
         }
 

@@ -6,7 +6,13 @@ use futures::StreamExt;
 use reqwest::Url;
 use tokio::fs;
 
-use crate::core::util::format_bytes;
+use crate::{
+    core::{
+        color::{Color, ColorExt},
+        util::format_bytes,
+    },
+    error, success,
+};
 
 fn extract_filename(url: &str) -> String {
     Path::new(url)
@@ -31,8 +37,8 @@ async fn download(url: &str) -> Result<()> {
     if !response.status().is_success() {
         return Err(anyhow::anyhow!(
             "Error fetching {} [{}]",
-            url,
-            response.status()
+            url.color(Color::Blue),
+            response.status().color(Color::Red)
         ));
     }
 
@@ -41,8 +47,8 @@ async fn download(url: &str) -> Result<()> {
 
     println!(
         "Downloading file from {} [{}]",
-        url,
-        format_bytes(response.content_length().unwrap_or_default())
+        url.color(Color::Blue),
+        format_bytes(response.content_length().unwrap_or_default()).color(Color::Yellow)
     );
 
     let mut stream = response.bytes_stream();
@@ -58,7 +64,7 @@ async fn download(url: &str) -> Result<()> {
         fs::set_permissions(&filename, Permissions::from_mode(0o755)).await?;
     }
 
-    println!("Downloaded {}", filename);
+    success!("Downloaded {}", filename.color(Color::Blue));
 
     Ok(())
 }
@@ -68,7 +74,7 @@ pub async fn download_and_save(links: &[String]) -> Result<()> {
         if let Ok(url) = Url::parse(link) {
             download(url.as_str()).await?;
         } else {
-            eprintln!("{} is not a valid URL", link);
+            error!("{} is not a valid URL", link.color(Color::Blue));
         };
     }
 

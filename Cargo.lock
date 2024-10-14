@@ -1274,6 +1274,7 @@ dependencies = [
  "clap",
  "futures",
  "image",
+ "libc",
  "reqwest",
  "rmp-serde",
  "serde",

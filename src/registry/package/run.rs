@@ -4,7 +4,13 @@ use anyhow::{Context, Result};
 use futures::StreamExt;
 use tokio::{fs, io::AsyncWriteExt};
 
-use crate::core::util::{format_bytes, validate_checksum};
+use crate::{
+    core::{
+        color::{Color, ColorExt},
+        util::{format_bytes, validate_checksum},
+    },
+    error, info, warn,
+};
 
 use super::ResolvedPackage;
 
@@ -34,10 +40,13 @@ impl Runner {
             if xattr::get(&self.install_path, "user.managed_by")?.as_deref() != Some(b"soar") {
                 return Err(anyhow::anyhow!(
                     "Path {} is not managed by soar. Exiting.",
-                    self.install_path.to_string_lossy()
+                    self.install_path.to_string_lossy().color(Color::Blue)
                 ));
             } else {
-                println!("Found existing cache for {}", package_name);
+                info!(
+                    "Found existing cache for {}",
+                    package_name.color(Color::Blue)
+                );
                 return self.run().await;
             }
         }
@@ -62,15 +71,15 @@ impl Runner {
             .unwrap_or(0);
         println!(
             "{}: Downloading package [{}]",
-            package_name,
-            format_bytes(total_size)
+            package_name.color(Color::Blue),
+            format_bytes(total_size).color(Color::Yellow)
         );
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
-                "{}: Download failed with status code {:?}",
-                package_name,
-                response.status()
+                "{}: Download failed {:?}",
+                package_name.color(Color::Blue),
+                response.status().color(Color::Red)
             ));
         }
 
@@ -83,27 +92,33 @@ impl Runner {
                 .await
                 .context(format!(
                     "{}: Failed to open temp file for writing",
-                    package_name
+                    package_name.color(Color::Blue)
                 ))?;
 
             let mut stream = response.bytes_stream();
 
             while let Some(chunk) = stream.next().await {
-                let chunk = chunk.context(format!("{}: Failed to read chunk", package_name))?;
+                let chunk = chunk.context(format!(
+                    "{}: Failed to read chunk",
+                    package_name.color(Color::Blue)
+                ))?;
                 file.write_all(&chunk).await?;
             }
             file.flush().await?;
         }
 
         if package.bsum == "null" {
-            eprintln!(
+            warn!(
                 "Missing checksum for {}. Installing anyway.",
-                package.full_name('/')
+                package.full_name('/').color(Color::Blue)
             );
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
             if result.is_err() {
-                eprintln!("\n{}: Checksum verification failed.", package_name);
+                error!(
+                    "\n{}: Checksum verification failed.",
+                    package_name.color(Color::Blue)
+                );
             }
         }
 

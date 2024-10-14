@@ -1,7 +1,12 @@
 use anyhow::Result;
 use tokio::sync::MutexGuard;
 
-use crate::registry::{installed::InstalledPackages, PackageRegistry};
+use crate::{
+    core::color::{Color, ColorExt},
+    error,
+    registry::{installed::InstalledPackages, PackageRegistry},
+    success,
+};
 
 use super::{parse_package_query, PackageQuery, ResolvedPackage};
 
@@ -58,15 +63,15 @@ impl Updater {
                     packages_to_update.push(package);
                 }
             } else {
-                println!(
+                error!(
                     "Package {} is not installed.",
-                    package.package.full_name('/')
+                    package.package.full_name('/').color(Color::Blue)
                 );
             }
         }
 
         if packages_to_update.is_empty() {
-            eprintln!("No updates available");
+            error!("No updates available");
         } else {
             let mut update_count = 0;
             for (idx, package) in packages_to_update.iter().enumerate() {
@@ -84,7 +89,10 @@ impl Updater {
                     .await?;
                 update_count += 1;
             }
-            println!("{} packages updated.", update_count);
+            success!(
+                "{} packages updated.",
+                update_count.color(Color::BrightMagenta)
+            );
         }
 
         Ok(())

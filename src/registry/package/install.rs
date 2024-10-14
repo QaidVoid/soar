@@ -6,9 +6,11 @@ use tokio::{fs, io::AsyncWriteExt, sync::Mutex};
 
 use crate::{
     core::{
+        color::{Color, ColorExt},
         constant::{BIN_PATH, PACKAGES_PATH},
         util::{calculate_checksum, format_bytes, validate_checksum},
     },
+    error,
     registry::{
         installed::InstalledPackages,
         package::{
@@ -16,6 +18,7 @@ use crate::{
             RootPath,
         },
     },
+    warn,
 };
 
 use super::ResolvedPackage;
@@ -56,22 +59,27 @@ impl Installer {
             .await
             .is_installed(&self.resolved_package);
 
-        let prefix = format!("[{}/{}] {}", idx + 1, total, package.full_name('/'));
+        let prefix = format!(
+            "[{}/{}] {}",
+            (idx + 1).color(Color::Green),
+            total.color(Color::Cyan),
+            package.full_name('/').color(Color::BrightBlue)
+        );
 
         if !force && is_installed {
-            println!("{}: Package is already installed", prefix);
+            error!("{}: Package is already installed", prefix);
             return Err(anyhow::anyhow!(""));
         }
 
         if is_installed && !is_update {
-            println!("{}: Reinstalling package", prefix);
+            warn!("{}: Reinstalling package", prefix);
         }
 
         if let Some(parent) = self.temp_path.parent() {
             fs::create_dir_all(parent).await.context(format!(
                 "{}: Failed to create temp directory {}",
                 prefix,
-                self.temp_path.to_string_lossy()
+                self.temp_path.to_string_lossy().color(Color::Blue)
             ))?;
         }
 
@@ -97,14 +105,14 @@ impl Installer {
         println!(
             "{}: Downloading package [{}]",
             prefix,
-            format_bytes(total_size)
+            format_bytes(total_size).color(Color::Yellow)
         );
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
-                "{} Download failed with status code {:?}",
+                "{} Download failed {:?}",
                 prefix,
-                response.status(),
+                response.status().color(Color::Red),
             ));
         }
 
@@ -126,9 +134,9 @@ impl Installer {
         }
 
         if package.bsum == "null" {
-            eprintln!(
+            error!(
                 "Missing checksum for {}. Installing anyway.",
-                package.full_name('/')
+                package.full_name('/').color(Color::BrightBlue)
             );
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
@@ -155,7 +163,7 @@ impl Installer {
             fs::create_dir_all(parent).await.context(format!(
                 "{}: Failed to create install directory {}",
                 prefix,
-                self.install_path.to_string_lossy()
+                self.install_path.to_string_lossy().color(Color::Blue)
             ))?;
         }
 
@@ -183,9 +191,13 @@ impl Installer {
         println!("{}: Installed package.", prefix);
         if !package.note.is_empty() {
             println!(
-                "{}: [Note] {}",
+                "{}: [{}] {}",
                 prefix,
-                package.note.replace("<br>", "\n     ")
+                "Note".color(Color::Magenta),
+                package
+                    .note
+                    .replace("<br>", "\n     ")
+                    .color(Color::BrightYellow)
             );
         }
 
@@ -216,13 +228,13 @@ impl Installer {
                     if let Some(path_owner) =
                         installed_guard.reverse_package_search(link.strip_prefix(&*PACKAGES_PATH)?)
                     {
-                        println!(
-                            "Warning: The package {} owns the binary {}",
+                        warn!(
+                            "The package {} owns the binary {}",
                             path_owner.name, &package.bin_name
                         );
                         print!(
                             "Do you want to switch to {} (y/N)? ",
-                            package.full_name('/')
+                            package.full_name('/').color(Color::Blue)
                         );
                         std::io::stdout().flush()?;
 

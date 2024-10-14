@@ -5,6 +5,7 @@ use misc::download::download_and_save;
 use registry::PackageRegistry;
 
 use core::{
+    color::{Color, ColorExt},
     config,
     constant::BIN_PATH,
     util::{cleanup, setup_required_paths},
@@ -12,7 +13,7 @@ use core::{
 use std::{env, path::Path};
 
 mod cli;
-mod core;
+pub mod core;
 mod misc;
 mod registry;
 
@@ -24,9 +25,10 @@ pub async fn init() -> Result<()> {
 
     let path_env = env::var("PATH")?;
     if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
-        eprintln!(
-            "{} is not in PATH. Please add it to PATH to use installed binaries.",
-            &*BIN_PATH.to_string_lossy()
+        warn!(
+            "{} is not in {1}. Please add it to {1} to use installed binaries.",
+            &*BIN_PATH.to_string_lossy().color(Color::Blue),
+            "PATH".color(Color::BrightGreen).bold()
         );
     }
 
@@ -39,9 +41,7 @@ pub async fn init() -> Result<()> {
             portable_config,
         } => {
             if portable.is_some() && (portable_home.is_some() || portable_config.is_some()) {
-                eprintln!(
-                    "Error: --portable cannot be used with --portable-home or --portable-config"
-                );
+                error!("--portable cannot be used with --portable-home or --portable-config");
                 std::process::exit(1);
             }
             registry

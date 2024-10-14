@@ -10,7 +10,13 @@ use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use tokio::sync::Mutex;
 
-use crate::core::config::CONFIG;
+use crate::{
+    core::{
+        color::{Color, ColorExt},
+        config::CONFIG,
+    },
+    error, info, success,
+};
 
 mod fetcher;
 pub mod installed;
@@ -57,7 +63,7 @@ impl PackageRegistry {
             let packages = match RepositoryPackages::deserialize(&mut de) {
                 Ok(packages) => packages,
                 Err(_) => {
-                    eprintln!("Registry is invalid. Refetching...");
+                    error!("Registry is invalid. Refetching...");
                     let content = fetcher.execute(repo).await?;
                     let mut de = rmp_serde::Deserializer::new(&content[..]);
                     RepositoryPackages::deserialize(&mut de)?
@@ -124,8 +130,8 @@ impl PackageRegistry {
                 println!(
                     "[{}] [{}] {}: {}",
                     installed,
-                    pkg.root_path,
-                    pkg.package.full_name('/'),
+                    pkg.root_path.clone().color(Color::BrightGreen),
+                    pkg.package.full_name('/').color(Color::Blue),
                     pkg.package.description,
                 );
             });
@@ -145,37 +151,43 @@ impl PackageRegistry {
         for pkg in result {
             let installed_pkg = installed_guard.find_package(&pkg);
             let print_data = |key: &str, value: &dyn Display| {
-                println!("{:<16}: {}", key, value);
+                println!("{}: {}", key, value);
             };
-            let data: Vec<(&str, &dyn Display)> = vec![
-                ("Root Path", &pkg.root_path),
-                ("Name", &pkg.package.name),
-                ("Binary", &pkg.package.bin_name),
-                ("Description", &pkg.package.description),
-                ("Version", &pkg.package.version),
-                ("Download URL", &pkg.package.download_url),
-                ("Size", &pkg.package.size),
-                ("Checksum", &pkg.package.bsum),
-                ("Build Date", &pkg.package.build_date),
-                ("Build Log", &pkg.package.build_log),
-                ("Build Script", &pkg.package.build_script),
-                ("Category", &pkg.package.category),
-                ("Extra Bins", &pkg.package.extra_bins),
+            let root_path = pkg.root_path.clone().to_string();
+            let data: Vec<(String, &str)> = vec![
+                ("Root Path".color(Color::Blue), &root_path),
+                ("Name".color(Color::Green), &pkg.package.name),
+                ("Binary".color(Color::Red), &pkg.package.bin_name),
+                ("Description".color(Color::Yellow), &pkg.package.description),
+                ("Version".color(Color::Magenta), &pkg.package.version),
+                (
+                    "Download URL".color(Color::Green),
+                    &pkg.package.download_url,
+                ),
+                ("Size".color(Color::Blue), &pkg.package.size),
+                ("Checksum".color(Color::Yellow), &pkg.package.bsum),
+                ("Build Date".color(Color::Magenta), &pkg.package.build_date),
+                ("Build Log".color(Color::Red), &pkg.package.build_log),
+                ("Build Script".color(Color::Blue), &pkg.package.build_script),
+                ("Category".color(Color::Yellow), &pkg.package.category),
+                ("Extra Bins".color(Color::Green), &pkg.package.extra_bins),
             ];
 
             data.iter().for_each(|(k, v)| {
-                print_data(k, v);
+                if !v.is_empty() && v != &"null" {
+                    print_data(k.as_str(), v);
+                }
             });
 
             if let Some(installed) = installed_pkg {
                 print_data(
-                    "Install Path",
+                    &"Install Path".color(Color::Magenta),
                     &pkg.package
                         .get_install_path(&installed.checksum)
                         .to_string_lossy(),
                 );
                 print_data(
-                    "Install Date",
+                    &"Install Date".color(Color::Red),
                     &installed.timestamp.format("%Y-%m-%d %H:%M:%S"),
                 );
             }
@@ -204,7 +216,10 @@ impl PackageRegistry {
                 "base" => Ok(Some(RootPath::Base)),
                 "bin" => Ok(Some(RootPath::Bin)),
                 "pkg" => Ok(Some(RootPath::Pkg)),
-                _ => Err(anyhow::anyhow!("Invalid root path: {}", rp)),
+                _ => Err(anyhow::anyhow!(
+                    "Invalid root path: {}",
+                    rp.color(Color::BrightGreen)
+                )),
             },
             None => Ok(None),
         }?;
@@ -223,14 +238,13 @@ impl PackageRegistry {
                 "-"
             };
             println!(
-                "[{}] [{}] {}{}:{}-{} ({})",
-                install_prefix,
-                resolved_package.root_path,
-                variant_prefix,
-                package.name,
-                package.name,
-                package.version,
-                package.size
+                "[{0}] [{1}] {2}{3}:{3}-{4} ({5})",
+                install_prefix.color(Color::Red),
+                resolved_package.root_path.color(Color::BrightGreen),
+                variant_prefix.color(Color::Blue),
+                package.name.color(Color::Blue),
+                package.version.color(Color::Green),
+                package.size.color(Color::Magenta)
             );
         }
         Ok(())
@@ -251,12 +265,15 @@ impl PackageRegistry {
         drop(installed_guard);
         match result {
             Ok(_) => {
-                println!("{} linked to binary path", package_name);
+                success!(
+                    "{} is linked to binary path",
+                    package_name.color(Color::Blue)
+                );
                 Ok(())
             }
             Err(e) => {
                 if e.to_string() == "NOT_INSTALLED" {
-                    println!("Package is not yet installed.");
+                    error!("Package is not yet installed.");
                     let package_name = resolved_package.package.full_name('/');
                     self.storage
                         .install_packages(
@@ -280,16 +297,16 @@ impl PackageRegistry {
 }
 
 pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
-    println!(
+    info!(
         "Multiple packages available for {}",
-        packages[0].package.name
+        packages[0].package.name.clone().color(Color::Blue)
     );
     for (i, package) in packages.iter().enumerate() {
         println!(
             "  [{}] [{}] {}: {}",
             i + 1,
-            package.root_path,
-            package.package.full_name('/'),
+            package.root_path.clone().color(Color::BrightGreen),
+            package.package.full_name('/').color(Color::Blue),
             package.package.description
         );
     }
@@ -303,7 +320,7 @@ pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedP
 
         match input.trim().parse::<usize>() {
             Ok(n) if n > 0 && n <= packages.len() => break n - 1,
-            _ => println!("Invalid selection, please try again."),
+            _ => error!("Invalid selection, please try again."),
         }
     };
     println!();

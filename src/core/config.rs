@@ -2,6 +2,8 @@ use std::{env, fs, path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
+use crate::core::color::{Color, ColorExt};
+
 use super::{constant::REGISTRY_PATH, util::home_config_path};
 
 /// Application's configuration
@@ -52,8 +54,9 @@ impl Config {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 fs::create_dir_all(&pkg_config).unwrap();
                 eprintln!(
-                    "Config not found. Generating default config at {}",
-                    config_path.to_string_lossy()
+                    "{} Generating default config at {}",
+                    "Config not found".color(Color::Red),
+                    config_path.to_string_lossy().color(Color::Green)
                 );
                 Config::generate(config_path)
             }
