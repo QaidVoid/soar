@@ -61,7 +61,7 @@ jobs:
           b3sum nightly/soar-nightly-${{ matrix.build.NAME }} > nightly/soar-nightly-${{ matrix.build.NAME }}.b3sum
 
       - name: Upload nightly binary
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: nightly/*
           tag_name: nightly
