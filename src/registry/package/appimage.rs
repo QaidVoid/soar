@@ -135,7 +135,7 @@ pub async fn remove_applinks(name: &str, bin_name: &str, file_path: &Path) -> Re
         .with_extension("png");
     let desktop_path = data_path
         .join("applications")
-        .join(format!("soar-{name}.desktop"));
+        .join(format!("{name}-soar.desktop"));
 
     remove_link(&desktop_path).await?;
     remove_link(&icon_path).await?;
@@ -286,7 +286,7 @@ async fn process_desktop(
 
     let final_path = data_path
         .join("applications")
-        .join(format!("soar-{name}.desktop"));
+        .join(format!("{name}-soar.desktop"));
 
     if let Some(parent) = final_path.parent() {
         fs::create_dir_all(parent).await.context(anyhow::anyhow!(

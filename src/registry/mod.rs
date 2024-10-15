@@ -1,4 +1,4 @@
-use std::{fmt::Display, io::Write, path::PathBuf, sync::Arc};
+use std::{fmt::Display, io::Write, sync::Arc};
 
 use anyhow::Result;
 
@@ -151,46 +151,82 @@ impl PackageRegistry {
         for pkg in result {
             let installed_pkg = installed_guard.find_package(&pkg);
             let print_data = |key: &str, value: &dyn Display| {
-                println!("{}: {}", key, value);
+                println!("{}: {}", key.color(Color::Red).bold(), value);
             };
-            let root_path = pkg.root_path.clone().to_string();
-            let data: Vec<(String, &str)> = vec![
-                ("Root Path".color(Color::Blue), &root_path),
-                ("Name".color(Color::Green), &pkg.package.name),
-                ("Binary".color(Color::Red), &pkg.package.bin_name),
-                ("Description".color(Color::Yellow), &pkg.package.description),
-                ("Version".color(Color::Magenta), &pkg.package.version),
+            let package = &pkg.package;
+            let formatted_name = format!(
+                "{} ({}#{})",
+                package.name.clone().color(Color::BrightGreen),
+                package.clone().full_name('/').color(Color::BrightCyan),
+                pkg.root_path.color(Color::BrightRed)
+            );
+            let mut data: Vec<(&str, String)> = vec![
+                ("Name", formatted_name),
                 (
-                    "Download URL".color(Color::Green),
-                    &pkg.package.download_url,
+                    "Description",
+                    package.description.clone().color(Color::BrightYellow),
                 ),
-                ("Size".color(Color::Blue), &pkg.package.size),
-                ("Checksum".color(Color::Yellow), &pkg.package.bsum),
-                ("Build Date".color(Color::Magenta), &pkg.package.build_date),
-                ("Build Log".color(Color::Red), &pkg.package.build_log),
-                ("Build Script".color(Color::Blue), &pkg.package.build_script),
-                ("Category".color(Color::Yellow), &pkg.package.category),
-                ("Extra Bins".color(Color::Green), &pkg.package.extra_bins),
+                ("Homepage", package.web_url.clone().color(Color::BrightBlue)),
+                ("Source", package.src_url.clone().color(Color::BrightBlue)),
+                (
+                    "Version",
+                    package.version.clone().color(Color::BrightMagenta),
+                ),
+                ("Checksum", package.bsum.clone().color(Color::BrightMagenta)),
+                ("Size", package.size.clone().color(Color::BrightMagenta)),
+                (
+                    "Download URL",
+                    package.download_url.clone().color(Color::BrightBlue),
+                ),
+                (
+                    "Build Date",
+                    package.build_date.clone().color(Color::BrightMagenta),
+                ),
+                (
+                    "Build Log",
+                    package.build_log.clone().color(Color::BrightBlue),
+                ),
+                (
+                    "Build Script",
+                    package.build_script.clone().color(Color::BrightBlue),
+                ),
+                (
+                    "Category",
+                    package.category.clone().color(Color::BrightCyan),
+                ),
+                (
+                    "Extra Bins",
+                    package.extra_bins.clone().color(Color::BrightBlack),
+                ),
             ];
 
+            if let Some(installed) = installed_pkg {
+                data.push((
+                    "Install Path",
+                    package
+                        .clone()
+                        .get_install_path(&installed.checksum)
+                        .to_string_lossy()
+                        .to_string()
+                        .color(Color::BrightGreen),
+                ));
+                data.push((
+                    "Install Date",
+                    installed
+                        .timestamp
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string()
+                        .color(Color::BrightMagenta),
+                ));
+            }
+
             data.iter().for_each(|(k, v)| {
-                if !v.is_empty() && v != &"null" {
-                    print_data(k.as_str(), v);
+                let value = strip_ansi_escapes::strip(v);
+                let value = String::from_utf8(value).unwrap();
+                if !value.is_empty() && value != "null" {
+                    print_data(k, v);
                 }
             });
-
-            if let Some(installed) = installed_pkg {
-                print_data(
-                    &"Install Path".color(Color::Magenta),
-                    &pkg.package
-                        .get_install_path(&installed.checksum)
-                        .to_string_lossy(),
-                );
-                print_data(
-                    &"Install Date".color(Color::Red),
-                    &installed.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                );
-            }
             println!();
         }
         Ok(())
