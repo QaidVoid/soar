@@ -16,7 +16,7 @@ use crate::{
         constant::{BIN_PATH, PACKAGES_PATH},
         util::{download, home_data_path},
     },
-    error, info,
+    error, info, warn,
 };
 
 use super::Package;
@@ -383,4 +383,43 @@ pub async fn setup_portable_dir(
     }
 
     Ok(())
+}
+
+pub async fn check_user_ns() {
+    let mut errors = Vec::new();
+    if !Path::new("/proc/self/ns/user").exists() {
+        errors.push("Your kernel does not support user namespaces");
+    }
+    if let Ok(content) = fs::read_to_string("/proc/sys/kernel/unprivileged_userns_clone").await {
+        if content.trim() == "0" {
+            errors.push("You must enable unprivileged_userns_clone");
+        }
+    }
+    if let Ok(content) = fs::read_to_string("/proc/sys/user/max_user_namespaces").await {
+        if content.trim() == "0" {
+            errors.push("You must enable max_user_namespaces");
+        }
+    }
+    if let Ok(content) = fs::read_to_string("/proc/sys/kernel/userns_restrict").await {
+        if content.trim() == "1" {
+            errors.push("You must disable userns_restrict");
+        }
+    }
+    if let Ok(content) =
+        fs::read_to_string("/proc/sys/kernel/apparmor_restrict_unprivileged_userns").await
+    {
+        if content.trim() == "1" {
+            errors.push("You must disable apparmor_restrict_unprivileged_userns");
+        }
+    }
+    if !errors.is_empty() {
+        for error in errors {
+            warn!("{}", error);
+            println!(
+                "{} {}",
+                "More info at:".color(Color::Cyan),
+                "https://l.ajam.dev/namespace".color(Color::Blue)
+            )
+        }
+    }
 }

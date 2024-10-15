@@ -14,7 +14,7 @@ use crate::{
     registry::{
         installed::InstalledPackages,
         package::{
-            appimage::{extract_appimage, setup_portable_dir},
+            appimage::{check_user_ns, extract_appimage, setup_portable_dir},
             RootPath,
         },
     },
@@ -199,6 +199,10 @@ impl Installer {
                     .replace("<br>", "\n     ")
                     .color(Color::BrightYellow)
             );
+        }
+
+        if self.resolved_package.root_path == RootPath::Pkg {
+            check_user_ns().await;
         }
 
         Ok(())
