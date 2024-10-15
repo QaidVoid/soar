@@ -49,9 +49,9 @@ impl Installer {
         installed_packages: Arc<Mutex<InstalledPackages>>,
         force: bool,
         is_update: bool,
-        portable: Option<PathBuf>,
-        portable_home: Option<PathBuf>,
-        portable_config: Option<PathBuf>,
+        portable: Option<String>,
+        portable_home: Option<String>,
+        portable_config: Option<String>,
     ) -> Result<()> {
         let package = &self.resolved_package.package;
         let is_installed = installed_packages

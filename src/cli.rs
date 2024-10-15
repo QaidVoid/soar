@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -32,17 +30,17 @@ pub enum Commands {
         /// Set portable dir for home & config
         #[arg(required = false)]
         #[arg(short, long, num_args = 0..=1)]
-        portable: Option<PathBuf>,
+        portable: Option<Option<String>>,
 
         /// Set portable home
         #[arg(required = false)]
         #[arg(long, num_args = 0..=1)]
-        portable_home: Option<PathBuf>,
+        portable_home: Option<Option<String>>,
 
         /// Set portable config
         #[arg(required = false)]
         #[arg(long, num_args = 0..=1)]
-        portable_config: Option<PathBuf>,
+        portable_config: Option<Option<String>>,
     },
 
     /// Search package

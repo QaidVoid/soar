@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     io::Write,
-    path::PathBuf,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -86,9 +85,9 @@ impl PackageStorage {
         force: bool,
         is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
-        portable: Option<PathBuf>,
-        portable_home: Option<PathBuf>,
-        portable_config: Option<PathBuf>,
+        portable: Option<String>,
+        portable_home: Option<String>,
+        portable_config: Option<String>,
     ) -> Result<()> {
         let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
             .iter()

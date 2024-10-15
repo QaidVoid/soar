@@ -44,6 +44,11 @@ pub async fn init() -> Result<()> {
                 error!("--portable cannot be used with --portable-home or --portable-config");
                 std::process::exit(1);
             }
+
+            let portable = portable.map(|p| p.unwrap_or_default());
+            let portable_home = portable_home.map(|p| p.unwrap_or_default());
+            let portable_config = portable_config.map(|p| p.unwrap_or_default());
+
             registry
                 .install_packages(
                     &packages,

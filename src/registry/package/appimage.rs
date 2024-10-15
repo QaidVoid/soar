@@ -336,9 +336,9 @@ pub async fn use_remote_files(package: &Package, file_path: &Path) -> Result<()>
 pub async fn setup_portable_dir(
     bin_name: &str,
     package_path: &Path,
-    portable: Option<PathBuf>,
-    portable_home: Option<PathBuf>,
-    portable_config: Option<PathBuf>,
+    portable: Option<String>,
+    portable_home: Option<String>,
+    portable_config: Option<String>,
 ) -> Result<()> {
     let pkg_config = package_path.with_extension("config");
     let pkg_home = package_path.with_extension("home");
@@ -350,29 +350,37 @@ pub async fn setup_portable_dir(
     };
 
     if let Some(portable_home) = portable_home {
-        let portable_home = portable_home.join(bin_name).with_extension("home");
-        fs::create_dir_all(&portable_home)
-            .await
-            .context(anyhow::anyhow!(
-                "Failed to create or access directory at {}",
-                &portable_home.to_string_lossy().color(Color::Blue)
-            ))?;
-        create_symlink(&portable_home, &pkg_home).await?;
-    } else {
-        fs::create_dir(&pkg_home).await?;
+        if portable_home.is_empty() {
+            fs::create_dir(&pkg_home).await?;
+        } else {
+            let portable_home = PathBuf::from(portable_home)
+                .join(bin_name)
+                .with_extension("home");
+            fs::create_dir_all(&portable_home)
+                .await
+                .context(anyhow::anyhow!(
+                    "Failed to create or access directory at {}",
+                    &portable_home.to_string_lossy().color(Color::Blue)
+                ))?;
+            create_symlink(&portable_home, &pkg_home).await?;
+        }
     }
     if let Some(portable_config) = portable_config {
-        let portable_config = portable_config.join(bin_name).with_extension("config");
-        fs::create_dir_all(&portable_config)
-            .await
-            .context(anyhow::anyhow!(
-                "Failed to create or access directory at {}",
-                &portable_config.to_string_lossy().color(Color::Blue)
-            ))?;
-        create_symlink(&portable_config, &pkg_config).await?;
-    } else {
-        fs::create_dir(&pkg_config).await?;
-    };
+        if portable_config.is_empty() {
+            fs::create_dir(&pkg_config).await?;
+        } else {
+            let portable_config = PathBuf::from(portable_config)
+                .join(bin_name)
+                .with_extension("config");
+            fs::create_dir_all(&portable_config)
+                .await
+                .context(anyhow::anyhow!(
+                    "Failed to create or access directory at {}",
+                    &portable_config.to_string_lossy().color(Color::Blue)
+                ))?;
+            create_symlink(&portable_config, &pkg_config).await?;
+        }
+    }
 
     Ok(())
 }

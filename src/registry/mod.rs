@@ -93,9 +93,9 @@ impl PackageRegistry {
         package_names: &[String],
         force: bool,
         is_update: bool,
-        portable: Option<PathBuf>,
-        portable_home: Option<PathBuf>,
-        portable_config: Option<PathBuf>,
+        portable: Option<String>,
+        portable_home: Option<String>,
+        portable_config: Option<String>,
     ) -> Result<()> {
         self.storage
             .install_packages(
