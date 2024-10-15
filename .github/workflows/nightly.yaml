@@ -1,8 +1,9 @@
 name: soar nightly
 
 on:
-  schedule:
-    - cron: '0 */3 * * *' 
+  push:
+    branches:
+      - main
   workflow_dispatch:  
 
 permissions:
@@ -68,12 +69,6 @@ jobs:
           name: "Nightly Build"
           body: "This is an automated nightly build of Soar."
           prerelease: true
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update nightly tag
-        run: |
-          git config user.name "Rabindra Dhakal"
-          git config user.email contact@qaidvoid.dev
-          git tag -f nightly
-          git push origin nightly -f
