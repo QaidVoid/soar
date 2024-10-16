@@ -5,7 +5,9 @@ use anyhow::Result;
 use fetcher::RegistryFetcher;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
-use package::{parse_package_query, update::Updater, ResolvedPackage, RootPath};
+use package::{
+    image::PackageImage, parse_package_query, update::Updater, ResolvedPackage, RootPath,
+};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use tokio::sync::Mutex;
@@ -14,6 +16,7 @@ use crate::{
     core::{
         color::{Color, ColorExt},
         config::CONFIG,
+        util::wrap_text,
     },
     error, info, success,
 };
@@ -150,15 +153,21 @@ impl PackageRegistry {
 
         for pkg in result {
             let installed_pkg = installed_guard.find_package(&pkg);
-            let print_data = |key: &str, value: &dyn Display| {
-                println!("{}: {}", key.color(Color::Red).bold(), value);
+
+            let print_data = |key: &str, value: &dyn Display, padding: usize| {
+                let wrapped_text = wrap_text(
+                    &format!("{}: {}", key.color(Color::Red).bold(), value),
+                    padding,
+                );
+                println!("{}", wrapped_text);
             };
             let package = &pkg.package;
+
             let formatted_name = format!(
                 "{} ({}#{})",
                 package.name.clone().color(Color::BrightGreen),
                 package.clone().full_name('/').color(Color::BrightCyan),
-                pkg.root_path.color(Color::BrightRed)
+                pkg.root_path.clone().color(Color::BrightRed)
             );
             let mut data: Vec<(&str, String)> = vec![
                 ("Name", formatted_name),
@@ -220,13 +229,27 @@ impl PackageRegistry {
                 ));
             }
 
+            let pkg_image = PackageImage::from(&pkg).await;
+            let mut padding = 0;
+            if let Some(ref kitty_sequence) = pkg_image.kitty {
+                print!("{:<2}{}", "", kitty_sequence);
+                print!("\x1b[s");
+                println!("\x1b[{}A", 16);
+                padding = 32;
+            }
+
             data.iter().for_each(|(k, v)| {
                 let value = strip_ansi_escapes::strip(v);
                 let value = String::from_utf8(value).unwrap();
+
                 if !value.is_empty() && value != "null" {
-                    print_data(k, v);
+                    print_data(k, v, padding);
                 }
             });
+
+            if pkg_image.kitty.is_some() {
+                println!("\x1b[u");
+            }
             println!();
         }
         Ok(())

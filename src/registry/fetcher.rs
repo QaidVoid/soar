@@ -38,7 +38,7 @@ impl RegistryFetcher {
                 .unwrap_or("metadata.json".to_owned())
         );
 
-        let content = download(&url, "registry").await?;
+        let content = download(&url, "registry", false).await?;
 
         let parsed: RepositoryResponse =
             serde_json::from_slice(&content).context("Failed to parse registry json")?;

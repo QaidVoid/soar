@@ -313,8 +313,8 @@ pub async fn use_remote_files(package: &Package, file_path: &Path) -> Result<()>
     let desktop_url = format!("{}/{}.desktop", base_url, &package.bin_name);
 
     let (icon_content, desktop_content) = try_join!(
-        download(icon_url, "image"),
-        download(&desktop_url, "desktop file")
+        download(icon_url, "image", false),
+        download(&desktop_url, "desktop file", false)
     )?;
 
     try_join!(

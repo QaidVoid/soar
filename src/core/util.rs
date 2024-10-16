@@ -3,11 +3,13 @@ use std::{
         self,
         consts::{ARCH, OS},
     },
+    mem,
     path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
+use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt},
@@ -174,7 +176,7 @@ pub async fn setup_required_paths() -> Result<()> {
     Ok(())
 }
 
-pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
+pub async fn download(url: &str, what: &str, silent: bool) -> Result<Vec<u8>> {
     let client = reqwest::Client::new();
     let response = client.get(url).send().await?;
 
@@ -189,12 +191,14 @@ pub async fn download(url: &str, what: &str) -> Result<Vec<u8>> {
 
     let mut content = Vec::new();
 
-    println!(
-        "Fetching {} from {} [{}]",
-        what.color(Color::Cyan),
-        url.color(Color::Blue),
-        format_bytes(response.content_length().unwrap_or_default())
-    );
+    if !silent {
+        println!(
+            "Fetching {} from {} [{}]",
+            what.color(Color::Cyan),
+            url.color(Color::Blue),
+            format_bytes(response.content_length().unwrap_or_default())
+        );
+    }
 
     let mut stream = response.bytes_stream();
 
@@ -239,4 +243,54 @@ pub async fn remove_broken_symlink() -> Result<()> {
     }
 
     Ok(())
+}
+
+//  FIXME: handle ansi sequences
+pub fn wrap_text(text: &str, padding: usize) -> String {
+    let mut wrapped_text = String::new();
+    let width = get_terminal_width() - padding / 2;
+    let mut pos = 0;
+
+    while pos < text.len() {
+        let end = std::cmp::min(pos + width, text.len());
+        let chunk = &text[pos..end];
+
+        wrapped_text.push_str(&format!("{:<padding$}{}", "", chunk, padding = padding));
+        pos = end;
+        if pos < text.len() {
+            wrapped_text.push('\n');
+        }
+    }
+
+    wrapped_text
+}
+
+pub fn get_font_height() -> usize {
+    let mut w: winsize = unsafe { mem::zeroed() };
+
+    if unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, &mut w) } == 0 && w.ws_ypixel > 0 && w.ws_row > 0 {
+        w.ws_ypixel as usize / w.ws_row as usize
+    } else {
+        16
+    }
+}
+
+pub fn get_font_width() -> usize {
+    let mut w: winsize = unsafe { mem::zeroed() };
+
+    if unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, &mut w) } == 0 && w.ws_xpixel > 0 && w.ws_col > 0 {
+        w.ws_xpixel as usize / w.ws_col as usize
+    } else {
+        16
+    }
+}
+
+pub fn get_terminal_width() -> usize {
+    let mut w: winsize = unsafe { mem::zeroed() };
+
+    if unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, &mut w) } == 0 && w.ws_col > 0 {
+        w.ws_col as usize
+    } else {
+        80
+    }
 }
