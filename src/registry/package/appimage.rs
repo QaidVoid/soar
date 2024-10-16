@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::HashSet,
     fs::File,
     io::{BufReader, BufWriter, Read, Seek, Write},
@@ -8,6 +9,7 @@ use std::{
 use anyhow::{Context, Result};
 use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
+use libc::{fork, unshare, waitpid, CLONE_NEWUSER};
 use tokio::{fs, try_join};
 
 use crate::{
@@ -387,6 +389,23 @@ pub async fn setup_portable_dir(
 
 pub async fn check_user_ns() {
     let mut errors = Vec::new();
+
+    let pid = unsafe { fork() };
+    match pid.cmp(&0) {
+        Ordering::Equal => {
+            if unsafe { unshare(CLONE_NEWUSER) != 0 } {
+                errors.push("You must enable unprivileged_userns_clone");
+            }
+            std::process::exit(0);
+        }
+        Ordering::Greater => {
+            unsafe {
+                waitpid(pid, std::ptr::null_mut(), 0);
+            };
+        }
+        _ => {}
+    }
+
     if !Path::new("/proc/self/ns/user").exists() {
         errors.push("Your kernel does not support user namespaces");
     }
