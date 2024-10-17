@@ -2,7 +2,10 @@ use std::io::{self, Cursor, Read, Write};
 
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine};
-use image::ImageFormat;
+use icy_sixel::{
+    sixel_string, DiffusionMethod, MethodForLargest, MethodForRep, PixelFormat, Quality,
+};
+use image::{GenericImageView, ImageBuffer, ImageFormat, Rgb};
 use termion::raw::IntoRawMode;
 
 use crate::core::util::{download, get_font_height, get_font_width};
@@ -10,10 +13,11 @@ use crate::core::util::{download, get_font_height, get_font_width};
 use super::ResolvedPackage;
 
 #[derive(Debug, Clone)]
-pub struct PackageImage {
-    pub sixel: Option<String>,
-    pub kitty: Option<String>,
-    pub iterm: Option<String>,
+pub enum PackageImage {
+    Sixel(String),
+    Kitty(String),
+    Iterm(String),
+    None,
 }
 
 fn is_kitty_supported() -> Result<bool> {
@@ -33,6 +37,33 @@ fn is_kitty_supported() -> Result<bool> {
         }
     }
 
+    Ok(false)
+}
+
+fn is_sixel_supported() -> Result<bool> {
+    let mut stdout = io::stdout().into_raw_mode()?;
+    let sequence = "\x1b[c";
+
+    write!(stdout, "{}", sequence)?;
+    stdout.flush();
+
+    let mut buffer = Vec::new();
+    let mut stdin = io::stdin();
+
+    for byte in stdin.bytes() {
+        let byte = byte?;
+        if byte == b'c' {
+            break;
+        }
+        buffer.push(byte);
+    }
+
+    let buf_str = String::from_utf8_lossy(&buffer);
+    for code in buf_str.split([';', '?']) {
+        if code == "4" {
+            return Ok(true);
+        }
+    }
     Ok(false)
 }
 
@@ -71,36 +102,43 @@ impl PackageImage {
         let package = &resolved_package.package;
         let icon = (download(&package.icon, "icon", true).await).unwrap_or_default();
 
-        let font_width = get_font_width();
-        let font_height = get_font_height();
+        let image_width = (get_font_width() * 30) as u32;
+        let image_height = (get_font_height() * 16) as u32;
 
         let img = image::load_from_memory(&icon).unwrap();
         let img = img.resize_exact(
-            (font_width * 30) as u32,
-            (font_height * 16) as u32,
+            image_width,
+            image_height,
             image::imageops::FilterType::Lanczos3,
         );
-        let mut icon = Vec::new();
-        let mut cursor = Cursor::new(&mut icon);
-        img.write_to(&mut cursor, ImageFormat::Png)
-            .expect("Failed to write image in PNG format");
 
-        let encoded = general_purpose::STANDARD.encode(&icon);
+        if is_kitty_supported().unwrap_or(false) {
+            let mut icon = Vec::new();
+            let mut cursor = Cursor::new(&mut icon);
+            img.write_to(&mut cursor, ImageFormat::Png)
+                .expect("Failed to write image in PNG format");
 
-        let kitty = if is_kitty_supported().unwrap_or(false) {
-            Some(build_transmit_sequence(&encoded))
-        } else {
-            None
+            let encoded = general_purpose::STANDARD.encode(&icon);
+
+            return Self::Kitty(build_transmit_sequence(&encoded));
+        } else if is_sixel_supported().unwrap_or(false) {
+            let (width, height) = img.dimensions();
+            let img_rgba8 = img.to_rgba8();
+            let bytes = img_rgba8.as_raw();
+
+            let sixel_output = sixel_string(
+                bytes,
+                width as i32,
+                height as i32,
+                PixelFormat::RGBA8888,
+                DiffusionMethod::Stucki,
+                MethodForLargest::Auto,
+                MethodForRep::Auto,
+                Quality::HIGH,
+            ).unwrap();
+
+            return Self::Sixel(sixel_output);
         };
-
-        // Unimplemented
-        let sixel = None;
-        let iterm = None;
-
-        Self {
-            sixel,
-            kitty,
-            iterm,
-        }
+        return Self::None;
     }
 }

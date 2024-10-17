@@ -20,6 +20,7 @@ blake3 = "1.5.4"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.19", features = ["derive"] }
 futures = "0.3.30"
+icy_sixel = "0.1.2"
 image = { version = "0.25.2", default-features = false, features = ["png"] }
 indicatif = "0.17.8"
 libc = "0.2.159"

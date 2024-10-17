@@ -394,7 +394,7 @@ pub async fn check_user_ns() {
     match pid.cmp(&0) {
         Ordering::Equal => {
             if unsafe { unshare(CLONE_NEWUSER) != 0 } {
-                errors.push("You must enable unprivileged_userns_clone");
+                errors.push("You lack permissions to create user_namespaces");
             }
             std::process::exit(0);
         }

@@ -16,7 +16,7 @@ use crate::{
     core::{
         color::{Color, ColorExt},
         config::CONFIG,
-        util::wrap_text,
+        util::{get_terminal_width, wrap_text},
     },
     error, info, success,
 };
@@ -153,14 +153,6 @@ impl PackageRegistry {
 
         for pkg in result {
             let installed_pkg = installed_guard.find_package(&pkg);
-
-            let print_data = |key: &str, value: &dyn Display, padding: usize| {
-                let wrapped_text = wrap_text(
-                    &format!("{}: {}", key.color(Color::Red).bold(), value),
-                    padding,
-                );
-                println!("{}", wrapped_text);
-            };
             let package = &pkg.package;
 
             let formatted_name = format!(
@@ -231,26 +223,57 @@ impl PackageRegistry {
 
             let pkg_image = PackageImage::from(&pkg).await;
             let mut padding = 0;
-            if let Some(ref kitty_sequence) = pkg_image.kitty {
-                print!("{:<2}{}", "", kitty_sequence);
-                print!("\x1b[s");
-                println!("\x1b[{}A", 16);
-                padding = 32;
-            }
 
-            data.iter().for_each(|(k, v)| {
-                let value = strip_ansi_escapes::strip(v);
-                let value = String::from_utf8(value).unwrap();
+            let mut printable = Vec::new();
+            match pkg_image {
+                PackageImage::Sixel(img) => {
+                    printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
+                    printable.extend(format!("\x1B[{}A", 15).as_bytes());
+                    printable.extend(format!("\x1B[{}C", 32).as_bytes());
 
-                if !value.is_empty() && value != "null" {
-                    print_data(k, v, padding);
+                    data.iter().for_each(|(k, v)| {
+                        let value = strip_ansi_escapes::strip(v);
+                        let value = String::from_utf8(value).unwrap();
+
+                        if !value.is_empty() && value != "null" {
+                            let line =
+                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 4);
+                            printable.extend(format!("\x1B[s{}\x1B[u\x1B[1B", line).as_bytes());
+                        }
+                    });
+                    printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
+                    println!("{}", String::from_utf8(printable).unwrap());
                 }
-            });
+                PackageImage::Kitty(img) => {
+                    printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
+                    printable.extend(format!("\x1B[{}A", 15).as_bytes());
 
-            if pkg_image.kitty.is_some() {
-                println!("\x1b[u");
-            }
-            println!();
+                    data.iter().for_each(|(k, v)| {
+                        let value = strip_ansi_escapes::strip(v);
+                        let value = String::from_utf8(value).unwrap();
+
+                        if !value.is_empty() && value != "null" {
+                            let line =
+                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 4);
+                            printable.extend(format!("\x1B[s{}\x1B[u\x1B[1B", line).as_bytes());
+                        }
+                    });
+                    printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
+                    println!("{}", String::from_utf8(printable).unwrap());
+                }
+                _ => {
+                    data.iter().for_each(|(k, v)| {
+                        let value = strip_ansi_escapes::strip(v);
+                        let value = String::from_utf8(value).unwrap();
+
+                        if !value.is_empty() && value != "null" {
+                            let line =
+                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 0);
+                            println!("{}", line);
+                        }
+                    });
+                }
+            };
         }
         Ok(())
     }
