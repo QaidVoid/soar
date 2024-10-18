@@ -5,10 +5,14 @@ use base64::{engine::general_purpose, Engine};
 use icy_sixel::{
     sixel_string, DiffusionMethod, MethodForLargest, MethodForRep, PixelFormat, Quality,
 };
-use image::{GenericImageView, ImageBuffer, ImageFormat, Rgb};
+use image::{GenericImageView, ImageFormat};
 use termion::raw::IntoRawMode;
+use tokio::fs;
 
-use crate::core::util::{download, get_font_height, get_font_width};
+use crate::core::{
+    constant::REGISTRY_PATH,
+    util::{download, get_font_height, get_font_width},
+};
 
 use super::ResolvedPackage;
 
@@ -45,10 +49,10 @@ fn is_sixel_supported() -> Result<bool> {
     let sequence = "\x1b[c";
 
     write!(stdout, "{}", sequence)?;
-    stdout.flush();
+    stdout.flush()?;
 
     let mut buffer = Vec::new();
-    let mut stdin = io::stdin();
+    let stdin = io::stdin();
 
     for byte in stdin.bytes() {
         let byte = byte?;
@@ -97,10 +101,29 @@ fn build_transmit_sequence(base64_data: &str) -> String {
     sequence
 }
 
+pub async fn load_default_icon(icon_path: &str) -> Result<Vec<u8>> {
+    let icon_path = REGISTRY_PATH.join("icons").join(icon_path);
+    let content = if icon_path.exists() {
+        fs::read(&icon_path).await?
+    } else {
+        vec![]
+    };
+    Ok(content)
+}
+
 impl PackageImage {
     pub async fn from(resolved_package: &ResolvedPackage) -> Self {
         let package = &resolved_package.package;
-        let icon = (download(&package.icon, "icon", true).await).unwrap_or_default();
+        let icon = download(&package.icon, "icon", true).await;
+        let icon = match icon {
+            Ok(icon) => icon,
+            Err(_) => load_default_icon(&format!(
+                "{}-{}.png",
+                resolved_package.repo_name, resolved_package.root_path
+            ))
+            .await
+            .unwrap_or_default(),
+        };
 
         let image_width = (get_font_width() * 30) as u32;
         let image_height = (get_font_height() * 16) as u32;
@@ -135,10 +158,11 @@ impl PackageImage {
                 MethodForLargest::Auto,
                 MethodForRep::Auto,
                 Quality::HIGH,
-            ).unwrap();
+            )
+            .unwrap();
 
             return Self::Sixel(sixel_output);
         };
-        return Self::None;
+        Self::None
     }
 }

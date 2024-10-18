@@ -1,8 +1,9 @@
-use std::{fmt::Display, io::Write, sync::Arc};
+use std::{io::Write, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use fetcher::RegistryFetcher;
+use futures::future::try_join_all;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
 use package::{
@@ -10,13 +11,14 @@ use package::{
 };
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
-use tokio::sync::Mutex;
+use tokio::{fs, sync::Mutex};
 
 use crate::{
     core::{
         color::{Color, ColorExt},
         config::CONFIG,
-        util::{get_terminal_width, wrap_text},
+        constant::REGISTRY_PATH,
+        util::{download, wrap_text},
     },
     error, info, success,
 };
@@ -73,6 +75,32 @@ impl PackageRegistry {
                 }
             };
             storage.add_repository(&repo.name, packages);
+
+            // fetch default icons
+            let icon_futures: Vec<_> = repo
+                .paths
+                .iter()
+                .map(|(key, base_url)| {
+                    let base_url = format!("{}/{}.default.png", base_url, key);
+                    async move { download(&base_url, "icon", true).await }
+                })
+                .collect();
+            let icons = try_join_all(icon_futures).await?;
+
+            for (key, icon) in repo.paths.keys().zip(icons) {
+                let icon_path = REGISTRY_PATH
+                    .join("icons")
+                    .join(format!("{}-{}.png", repo.name, key));
+
+                if let Some(parent) = icon_path.parent() {
+                    fs::create_dir_all(parent).await.context(anyhow::anyhow!(
+                        "Failed to create icon directory at {}",
+                        parent.to_string_lossy().color(Color::Blue)
+                    ))?;
+                }
+
+                fs::write(icon_path, icon).await?;
+            }
         }
 
         Ok(())
@@ -222,7 +250,6 @@ impl PackageRegistry {
             }
 
             let pkg_image = PackageImage::from(&pkg).await;
-            let mut padding = 0;
 
             let mut printable = Vec::new();
             match pkg_image {

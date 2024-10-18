@@ -1,4 +1,4 @@
-use std::{env, fs, path::PathBuf, sync::LazyLock};
+use std::{collections::HashMap, env::consts::ARCH, fs, path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +34,9 @@ pub struct Repository {
     /// Optional field specifying a custom registry file for the repository. Default:
     /// `metadata.json`
     pub registry: Option<String>,
+
+    /// Paths for different collections
+    pub paths: HashMap<String, String>,
 }
 
 impl Repository {
@@ -54,8 +57,8 @@ impl Config {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 fs::create_dir_all(&pkg_config).unwrap();
                 eprintln!(
-                    "{} Generating default config at {}",
-                    "Config not found".color(Color::Red),
+                    "{}\nGenerating default config at {}",
+                    "Config not found".color(Color::BrightRed),
                     config_path.to_string_lossy().color(Color::Green)
                 );
                 Config::generate(config_path)
@@ -69,12 +72,22 @@ impl Config {
     }
 
     fn generate(config_path: PathBuf) -> Vec<u8> {
+        let paths = HashMap::from([
+            ("bin".to_owned(), format!("https://bin.ajam.dev/{ARCH}")),
+            (
+                "base".to_owned(),
+                format!("https://bin.ajam.dev/{ARCH}/Baseutils"),
+            ),
+            ("pkg".to_owned(), format!("https://pkg.ajam.dev/{ARCH}")),
+        ]);
+
         let def_config = Self {
             soar_path: "$HOME/.soar".to_owned(),
             repositories: vec![Repository {
                 name: "ajam".to_owned(),
                 url: "https://bin.ajam.dev".to_owned(),
                 registry: Some("METADATA.AIO.json".to_owned()),
+                paths,
             }],
             parallel: Some(true),
             parallel_limit: Some(2),
