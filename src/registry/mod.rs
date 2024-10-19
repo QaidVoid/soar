@@ -59,7 +59,7 @@ impl PackageRegistry {
         for repo in &CONFIG.repositories {
             let path = repo.get_path();
             let content = if path.exists() {
-                loader.execute(repo).await?
+                loader.execute(repo, fetcher).await?
             } else {
                 fetcher.execute(repo).await?
             };

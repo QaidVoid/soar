@@ -86,4 +86,22 @@ impl RegistryFetcher {
 
         Ok(content)
     }
+
+    pub async fn checksum(&self, repository: &Repository) -> Result<Vec<u8>> {
+        let platform = get_platform();
+        let url = format!(
+            "{}/{}/{}",
+            repository.url,
+            platform,
+            repository
+                .registry
+                .to_owned()
+                .map(|file| format!("{file}.bsum"))
+                .unwrap_or("metadata.json.bsum".to_owned())
+        );
+
+        let content = download(&url, "registry", true).await?;
+
+        Ok(content)
+    }
 }

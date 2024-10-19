@@ -232,21 +232,23 @@ impl Installer {
                     if let Some(path_owner) =
                         installed_guard.reverse_package_search(link.strip_prefix(&*PACKAGES_PATH)?)
                     {
-                        warn!(
-                            "The package {} owns the binary {}",
-                            path_owner.name, &package.bin_name
-                        );
-                        print!(
-                            "Do you want to switch to {} (y/N)? ",
-                            package.full_name('/').color(Color::Blue)
-                        );
-                        std::io::stdout().flush()?;
+                        if path_owner.name != package.full_name('-') {
+                            warn!(
+                                "The package {} owns the binary {}",
+                                path_owner.name, &package.bin_name
+                            );
+                            print!(
+                                "Do you want to switch to {} (y/N)? ",
+                                package.full_name('/').color(Color::Blue)
+                            );
+                            std::io::stdout().flush()?;
 
-                        let mut response = String::new();
-                        std::io::stdin().read_line(&mut response)?;
+                            let mut response = String::new();
+                            std::io::stdin().read_line(&mut response)?;
 
-                        if !response.trim().eq_ignore_ascii_case("y") {
-                            return Ok(());
+                            if !response.trim().eq_ignore_ascii_case("y") {
+                                return Ok(());
+                            }
                         }
                     }
                 }
