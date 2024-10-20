@@ -13,10 +13,7 @@ use crate::{
     error,
     registry::{
         installed::InstalledPackages,
-        package::{
-            appimage::{check_user_ns, extract_appimage, setup_portable_dir},
-            Collection,
-        },
+        package::appimage::{check_user_ns, extract_appimage, setup_portable_dir},
     },
     warn,
 };
@@ -169,7 +166,8 @@ impl Installer {
 
         self.save_file().await?;
         self.symlink_bin(&installed_packages).await?;
-        if self.resolved_package.collection == Collection::Pkg {
+        // TODO: use magic bytes instead
+        if self.resolved_package.collection == "pkg" {
             extract_appimage(package, &self.install_path).await?;
             setup_portable_dir(
                 &package.bin_name,
@@ -201,7 +199,7 @@ impl Installer {
             );
         }
 
-        if self.resolved_package.collection == Collection::Pkg {
+        if self.resolved_package.collection == "pkg" {
             check_user_ns().await;
         }
 

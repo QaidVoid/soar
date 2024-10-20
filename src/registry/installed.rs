@@ -63,7 +63,7 @@ impl InstalledPackages {
     pub fn is_installed(&self, package: &ResolvedPackage) -> bool {
         self.packages.iter().any(|installed| {
             installed.repo_name == package.repo_name
-                && installed.collection == package.collection.to_string()
+                && installed.collection == package.collection
                 && installed.name == package.package.full_name('-')
         })
     }
@@ -71,7 +71,7 @@ impl InstalledPackages {
     fn find_package_mut(&mut self, package: &ResolvedPackage) -> Option<&mut InstalledPackage> {
         self.packages.iter_mut().find(|installed| {
             installed.repo_name == package.repo_name
-                && installed.collection == package.collection.to_string()
+                && installed.collection == package.collection
                 && installed.name == package.package.full_name('-')
         })
     }
@@ -79,7 +79,7 @@ impl InstalledPackages {
     pub fn find_package(&self, package: &ResolvedPackage) -> Option<&InstalledPackage> {
         self.packages.iter().find(|installed| {
             installed.repo_name == package.repo_name
-                && installed.collection == package.collection.to_string()
+                && installed.collection == package.collection
                 && installed.name == package.package.full_name('-')
         })
     }
@@ -117,7 +117,7 @@ impl InstalledPackages {
             true => {
                 self.packages.retain(|installed| {
                     !(installed.repo_name == resolved_package.repo_name
-                        && installed.collection == resolved_package.collection.to_string()
+                        && installed.collection == resolved_package.collection
                         && installed.name == resolved_package.package.full_name('-'))
                 });
             }

@@ -10,15 +10,14 @@ use crate::core::{
     util::{download, get_platform},
 };
 
-use super::{package::Package, storage::RepositoryPackages};
+use super::package::Package;
 
 pub struct RegistryFetcher;
 
 #[derive(Deserialize)]
 struct RepositoryResponse {
-    bin: Vec<Package>,
-    base: Vec<Package>,
-    pkg: Vec<Package>,
+    #[serde(flatten)]
+    collection: HashMap<String, Vec<Package>>,
 }
 
 impl RegistryFetcher {
@@ -43,29 +42,30 @@ impl RegistryFetcher {
         let parsed: RepositoryResponse =
             serde_json::from_slice(&content).context("Failed to parse registry json")?;
 
-        let convert_to_hashmap = |packages: Vec<Package>| -> HashMap<String, Vec<Package>> {
-            let mut result = HashMap::new();
-            for package in packages {
-                let variant = package
-                    .download_url
-                    .split('/')
-                    .rev()
-                    .nth(1)
-                    .map(|v| v.to_owned())
-                    .filter(|v| v != ARCH && v != &platform && v != &platform.replace('-', "_"));
-                let package_entry = result
-                    .entry(package.name.to_owned())
-                    .or_insert_with(Vec::new);
-                package_entry.push(Package { variant, ..package });
-            }
-            result
-        };
+        let package_registry: HashMap<String, HashMap<String, Vec<Package>>> = parsed
+            .collection
+            .iter()
+            .map(|(key, packages)| {
+                let package_map: HashMap<String, Vec<Package>> =
+                    packages.iter().fold(HashMap::new(), |mut acc, package| {
+                        acc.entry(package.name.clone()).or_default().push(Package {
+                            variant: package
+                                .download_url
+                                .split('/')
+                                .rev()
+                                .nth(1)
+                                .map(|v| v.to_owned())
+                                .filter(|v| {
+                                    v != ARCH && v != &platform && v != &platform.replace('-', "_")
+                                }),
+                            ..package.clone()
+                        });
+                        acc
+                    });
 
-        let package_registry = RepositoryPackages {
-            bin: convert_to_hashmap(parsed.bin),
-            base: convert_to_hashmap(parsed.base),
-            pkg: convert_to_hashmap(parsed.pkg),
-        };
+                (key.clone(), package_map)
+            })
+            .collect();
 
         let content = rmp_serde::to_vec(&package_registry)
             .context("Failed to serialize package registry to MessagePack")?;

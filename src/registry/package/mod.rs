@@ -5,7 +5,7 @@ mod remove;
 pub mod run;
 pub mod update;
 
-use std::{fmt::Display, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use install::Installer;
@@ -13,13 +13,7 @@ use remove::Remover;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{
-    core::{
-        color::{Color, ColorExt},
-        constant::PACKAGES_PATH,
-    },
-    error,
-};
+use crate::core::constant::PACKAGES_PATH;
 
 use super::installed::InstalledPackages;
 
@@ -47,7 +41,7 @@ pub struct Package {
 #[derive(Default, Debug, Clone)]
 pub struct ResolvedPackage {
     pub repo_name: String,
-    pub collection: Collection,
+    pub collection: String,
     pub package: Package,
 }
 
@@ -111,37 +105,13 @@ impl Package {
 pub struct PackageQuery {
     pub name: String,
     pub variant: Option<String>,
-    pub collection: Option<Collection>,
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub enum Collection {
-    #[default]
-    Bin,
-    Base,
-    Pkg,
+    pub collection: Option<String>,
 }
 
 pub fn parse_package_query(query: &str) -> PackageQuery {
     let (base_query, collection) = query
         .rsplit_once('#')
-        .map(|(n, r)| {
-            (
-                n.to_owned(),
-                match r.to_lowercase().as_str() {
-                    "base" => Some(Collection::Base),
-                    "bin" => Some(Collection::Bin),
-                    "pkg" => Some(Collection::Pkg),
-                    _ => {
-                        error!(
-                            "Invalid collection path provided for {}",
-                            query.color(Color::Red)
-                        );
-                        std::process::exit(-1);
-                    }
-                },
-            )
-        })
+        .map(|(n, r)| (n.to_owned(), (!r.is_empty()).then(|| r.to_lowercase())))
         .unwrap_or((query.to_owned(), None));
 
     let (name, variant) = base_query
@@ -153,25 +123,5 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
         name,
         variant,
         collection,
-    }
-}
-
-impl Display for Collection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Collection::Bin => write!(f, "bin"),
-            Collection::Base => write!(f, "base"),
-            Collection::Pkg => write!(f, "pkg"),
-        }
-    }
-}
-
-impl From<String> for Collection {
-    fn from(value: String) -> Self {
-        match value.as_ref() {
-            "base" => Collection::Base,
-            "pkg" => Collection::Pkg,
-            _ => Collection::Bin,
-        }
     }
 }

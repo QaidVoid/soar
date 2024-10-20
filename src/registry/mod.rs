@@ -6,9 +6,7 @@ use fetcher::RegistryFetcher;
 use futures::future::try_join_all;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
-use package::{
-    image::PackageImage, parse_package_query, update::Updater, ResolvedPackage, Collection,
-};
+use package::{image::PackageImage, parse_package_query, update::Updater, ResolvedPackage};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use tokio::{fs, sync::Mutex};
@@ -320,19 +318,6 @@ impl PackageRegistry {
     }
 
     pub async fn list(&self, collection: Option<&str>) -> Result<()> {
-        let collection = match collection {
-            Some(rp) => match rp.to_lowercase().as_str() {
-                "base" => Ok(Some(Collection::Base)),
-                "bin" => Ok(Some(Collection::Bin)),
-                "pkg" => Ok(Some(Collection::Pkg)),
-                _ => Err(anyhow::anyhow!(
-                    "Invalid collection: {}",
-                    rp.color(Color::BrightGreen)
-                )),
-            },
-            None => Ok(None),
-        }?;
-
         let packages = self.storage.list_packages(collection);
         for resolved_package in packages {
             let package = resolved_package.package.clone();

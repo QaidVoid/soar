@@ -30,7 +30,7 @@ use crate::{
 };
 
 use super::{
-    package::{run::Runner, Package, PackageQuery, Collection},
+    package::{run::Runner, Package, PackageQuery},
     select_package_variant,
 };
 
@@ -41,9 +41,8 @@ pub struct PackageStorage {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RepositoryPackages {
-    pub bin: HashMap<String, Vec<Package>>,
-    pub base: HashMap<String, Vec<Package>>,
-    pub pkg: HashMap<String, Vec<Package>>,
+    #[serde(flatten)]
+    pub collection: HashMap<String, HashMap<String, Vec<Package>>>,
 }
 
 impl PackageStorage {
@@ -178,82 +177,60 @@ impl PackageStorage {
         Ok(())
     }
 
-    pub fn list_packages(&self, collection: Option<Collection>) -> Vec<ResolvedPackage> {
+    pub fn list_packages(&self, collection: Option<&str>) -> Vec<ResolvedPackage> {
         self.repository
             .iter()
             .flat_map(|(repo_name, repo_packages)| {
-                let package_iterators = match collection {
-                    Some(ref path) => match path {
-                        Collection::Bin => vec![(&repo_packages.bin, Collection::Bin)],
-                        Collection::Base => vec![(&repo_packages.base, Collection::Base)],
-                        Collection::Pkg => vec![(&repo_packages.pkg, Collection::Pkg)],
-                    },
-                    None => vec![
-                        (&repo_packages.bin, Collection::Bin),
-                        (&repo_packages.base, Collection::Base),
-                        (&repo_packages.pkg, Collection::Pkg),
-                    ],
-                };
-
-                package_iterators.into_iter().flat_map(move |(map, path)| {
-                    map.iter().flat_map(move |(_, packages)| {
-                        let value = path.clone();
-                        packages.iter().map(move |package| ResolvedPackage {
-                            repo_name: repo_name.clone(),
-                            collection: value.clone(),
-                            package: package.clone(),
+                repo_packages
+                    .collection
+                    .iter()
+                    .filter(|(key, _)| collection.is_none() || Some(key.as_str()) == collection)
+                    .flat_map(|(key, collections)| {
+                        collections.iter().flat_map(|(_, packages)| {
+                            packages.iter().map(|package| ResolvedPackage {
+                                repo_name: repo_name.clone(),
+                                collection: key.clone(),
+                                package: package.clone(),
+                            })
                         })
                     })
-                })
             })
-            .collect::<Vec<_>>()
+            .collect()
     }
 
     pub fn get_packages(&self, query: &PackageQuery) -> Option<Vec<ResolvedPackage>> {
         let pkg_name = query.name.trim();
-
-        let mut resolved_packages = Vec::new();
-        for (repo_name, packages) in &self.repository {
-            let package_iterators = query
-                .collection
-                .to_owned()
-                .map(|collection| match collection {
-                    Collection::Bin => vec![(&packages.bin, Collection::Bin)],
-                    Collection::Base => vec![(&packages.base, Collection::Base)],
-                    Collection::Pkg => vec![(&packages.pkg, Collection::Pkg)],
-                })
-                .unwrap_or_else(|| {
-                    vec![
-                        (&packages.bin, Collection::Bin),
-                        (&packages.base, Collection::Base),
-                        (&packages.pkg, Collection::Pkg),
-                    ]
-                });
-
-            let pkgs: Vec<ResolvedPackage> = package_iterators
-                .iter()
-                .filter_map(|(map, collection)| {
-                    map.get(pkg_name).map(|p| {
-                        p.iter()
-                            .filter(|pkg| {
-                                pkg.name == pkg_name
+        let resolved_packages: Vec<ResolvedPackage> = self
+            .repository
+            .iter()
+            .flat_map(|(repo_name, packages)| {
+                packages
+                    .collection
+                    .iter()
+                    .filter(|(collection_key, _)| {
+                        query.collection.is_none()
+                            || Some(collection_key.as_str()) == query.collection.as_deref()
+                    })
+                    .flat_map(|(collection_key, map)| {
+                        map.get(pkg_name).into_iter().flat_map(|pkgs| {
+                            pkgs.iter().filter_map(|pkg| {
+                                if pkg.name == pkg_name
                                     && (query.variant.is_none()
                                         || pkg.variant.as_ref() == query.variant.as_ref())
+                                {
+                                    Some(ResolvedPackage {
+                                        repo_name: repo_name.to_owned(),
+                                        package: pkg.clone(),
+                                        collection: collection_key.clone(),
+                                    })
+                                } else {
+                                    None
+                                }
                             })
-                            .cloned()
-                            .map(|p| ResolvedPackage {
-                                repo_name: repo_name.to_owned(),
-                                package: p,
-                                collection: collection.to_owned(),
-                            })
-                            .collect::<Vec<ResolvedPackage>>()
+                        })
                     })
-                })
-                .flatten()
-                .collect();
-
-            resolved_packages.extend(pkgs);
-        }
+            })
+            .collect();
 
         if !resolved_packages.is_empty() {
             Some(resolved_packages)
@@ -265,28 +242,13 @@ impl PackageStorage {
     pub async fn search(&self, query: &str) -> Vec<ResolvedPackage> {
         let query = parse_package_query(query);
         let pkg_name = query.name.trim();
+        let mut resolved_packages: Vec<(u32, Package, String, String)> = Vec::new();
 
-        let mut resolved_packages: Vec<(u32, Package, Collection, String)> = Vec::new();
         for (repo_name, packages) in &self.repository {
-            let package_iterators = query
-                .collection
-                .to_owned()
-                .map(|collection| match collection {
-                    Collection::Bin => vec![(&packages.bin, Collection::Bin)],
-                    Collection::Base => vec![(&packages.base, Collection::Base)],
-                    Collection::Pkg => vec![(&packages.pkg, Collection::Pkg)],
-                })
-                .unwrap_or_else(|| {
-                    vec![
-                        (&packages.bin, Collection::Bin),
-                        (&packages.base, Collection::Base),
-                        (&packages.pkg, Collection::Pkg),
-                    ]
-                });
-            let pkgs: Vec<(u32, Package, Collection, String)> = package_iterators
-                .iter()
-                .flat_map(|(map, collection)| {
-                    map.iter().flat_map(|(_, packages)| {
+            for (collection_name, collection_packages) in &packages.collection {
+                let pkgs: Vec<(u32, Package, String, String)> = collection_packages
+                    .iter()
+                    .flat_map(|(_, packages)| {
                         packages.iter().filter_map(|pkg| {
                             let mut score = 0;
                             if pkg.name == pkg_name {
@@ -296,14 +258,13 @@ impl PackageStorage {
                             } else {
                                 return None;
                             }
-
                             if query.variant.is_none()
                                 || pkg.variant.as_ref() == query.variant.as_ref()
                             {
                                 Some((
                                     score,
                                     pkg.to_owned(),
-                                    collection.to_owned(),
+                                    collection_name.to_owned(),
                                     repo_name.to_owned(),
                                 ))
                             } else {
@@ -311,27 +272,21 @@ impl PackageStorage {
                             }
                         })
                     })
-                })
-                .collect();
-
-            resolved_packages.extend(pkgs);
+                    .collect();
+                resolved_packages.extend(pkgs);
+            }
         }
 
         resolved_packages.sort_by(|(a, _, _, _), (b, _, _, _)| b.cmp(a));
-
-        let pkgs: Vec<ResolvedPackage> = resolved_packages
+        resolved_packages
             .into_iter()
             .filter(|(score, _, _, _)| *score > 0)
-            .collect::<Vec<_>>()
-            .into_iter()
             .map(|(_, pkg, collection, repo_name)| ResolvedPackage {
                 repo_name,
                 package: pkg,
                 collection,
             })
-            .collect();
-
-        pkgs
+            .collect()
     }
 
     pub async fn inspect(&self, package_name: &str) -> Result<()> {
@@ -415,7 +370,7 @@ impl PackageStorage {
             let repo = &CONFIG.repositories[0];
             let base_url = format!("{}/{}", repo.url, platform);
 
-            let collection = if resolved_pkg.collection == Collection::Base {
+            let collection = if resolved_pkg.collection == "base" {
                 "/Baseutils"
             } else {
                 ""

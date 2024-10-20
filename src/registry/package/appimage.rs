@@ -93,8 +93,8 @@ fn is_appimage(file: &mut BufReader<File>) -> bool {
 }
 
 async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
-    if to.exists() {
-        if to.read_link().is_ok() && !to.read_link()?.starts_with(&*PACKAGES_PATH) {
+    if to.is_symlink() {
+        if to.exists() && !to.read_link()?.starts_with(&*PACKAGES_PATH) {
             error!(
                 "{} is not managed by soar",
                 to.to_string_lossy().color(Color::Blue)
@@ -109,8 +109,8 @@ async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
 }
 
 async fn remove_link(path: &Path) -> Result<()> {
-    if path.exists() {
-        if path.read_link().is_ok() && !path.read_link()?.starts_with(&*PACKAGES_PATH) {
+    if path.is_symlink() {
+        if path.exists() && !path.read_link()?.starts_with(&*PACKAGES_PATH) {
             error!(
                 "{} is not managed by soar",
                 path.to_string_lossy().color(Color::Blue)
