@@ -93,9 +93,9 @@ pub enum Commands {
     /// List all available packages
     #[clap(name = "list", alias = "ls")]
     ListPackages {
-        /// Root path of packages
+        /// Which collection to get the packages from
         #[arg(required = false)]
-        root_path: Option<String>,
+        collection: Option<String>,
     },
 
     /// Inspect package build log

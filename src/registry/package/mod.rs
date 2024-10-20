@@ -47,7 +47,7 @@ pub struct Package {
 #[derive(Default, Debug, Clone)]
 pub struct ResolvedPackage {
     pub repo_name: String,
-    pub root_path: RootPath,
+    pub collection: Collection,
     pub package: Package,
 }
 
@@ -111,11 +111,11 @@ impl Package {
 pub struct PackageQuery {
     pub name: String,
     pub variant: Option<String>,
-    pub root_path: Option<RootPath>,
+    pub collection: Option<Collection>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub enum RootPath {
+pub enum Collection {
     #[default]
     Bin,
     Base,
@@ -123,17 +123,20 @@ pub enum RootPath {
 }
 
 pub fn parse_package_query(query: &str) -> PackageQuery {
-    let (base_query, root_path) = query
+    let (base_query, collection) = query
         .rsplit_once('#')
         .map(|(n, r)| {
             (
                 n.to_owned(),
                 match r.to_lowercase().as_str() {
-                    "base" => Some(RootPath::Base),
-                    "bin" => Some(RootPath::Bin),
-                    "pkg" => Some(RootPath::Pkg),
+                    "base" => Some(Collection::Base),
+                    "bin" => Some(Collection::Bin),
+                    "pkg" => Some(Collection::Pkg),
                     _ => {
-                        error!("Invalid root path provided for {}", query.color(Color::Red));
+                        error!(
+                            "Invalid collection path provided for {}",
+                            query.color(Color::Red)
+                        );
                         std::process::exit(-1);
                     }
                 },
@@ -149,16 +152,26 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
     PackageQuery {
         name,
         variant,
-        root_path,
+        collection,
     }
 }
 
-impl Display for RootPath {
+impl Display for Collection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RootPath::Bin => write!(f, "bin"),
-            RootPath::Base => write!(f, "base"),
-            RootPath::Pkg => write!(f, "pkg"),
+            Collection::Bin => write!(f, "bin"),
+            Collection::Base => write!(f, "base"),
+            Collection::Pkg => write!(f, "pkg"),
+        }
+    }
+}
+
+impl From<String> for Collection {
+    fn from(value: String) -> Self {
+        match value.as_ref() {
+            "base" => Collection::Base,
+            "pkg" => Collection::Pkg,
+            _ => Collection::Bin,
         }
     }
 }

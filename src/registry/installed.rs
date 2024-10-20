@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -14,15 +14,12 @@ use crate::{
     registry::package::parse_package_query,
 };
 
-use super::{
-    package::{ResolvedPackage, RootPath},
-    storage::PackageStorage,
-};
+use super::{package::ResolvedPackage, storage::PackageStorage};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InstalledPackage {
     pub repo_name: String,
-    pub root_path: RootPath,
+    pub collection: String,
     pub name: String,
     pub bin_name: String,
     pub version: String,
@@ -66,7 +63,7 @@ impl InstalledPackages {
     pub fn is_installed(&self, package: &ResolvedPackage) -> bool {
         self.packages.iter().any(|installed| {
             installed.repo_name == package.repo_name
-                && installed.root_path == package.root_path
+                && installed.collection == package.collection.to_string()
                 && installed.name == package.package.full_name('-')
         })
     }
@@ -74,7 +71,7 @@ impl InstalledPackages {
     fn find_package_mut(&mut self, package: &ResolvedPackage) -> Option<&mut InstalledPackage> {
         self.packages.iter_mut().find(|installed| {
             installed.repo_name == package.repo_name
-                && installed.root_path == package.root_path
+                && installed.collection == package.collection.to_string()
                 && installed.name == package.package.full_name('-')
         })
     }
@@ -82,7 +79,7 @@ impl InstalledPackages {
     pub fn find_package(&self, package: &ResolvedPackage) -> Option<&InstalledPackage> {
         self.packages.iter().find(|installed| {
             installed.repo_name == package.repo_name
-                && installed.root_path == package.root_path
+                && installed.collection == package.collection.to_string()
                 && installed.name == package.package.full_name('-')
         })
     }
@@ -99,7 +96,7 @@ impl InstalledPackages {
         } else {
             let new_installed = InstalledPackage {
                 repo_name: resolved_package.repo_name.to_owned(),
-                root_path: resolved_package.root_path.to_owned(),
+                collection: resolved_package.collection.to_string().to_owned(),
                 name: package.full_name('-'),
                 bin_name: package.bin_name,
                 version: package.version,
@@ -120,7 +117,7 @@ impl InstalledPackages {
             true => {
                 self.packages.retain(|installed| {
                     !(installed.repo_name == resolved_package.repo_name
-                        && installed.root_path == resolved_package.root_path
+                        && installed.collection == resolved_package.collection.to_string()
                         && installed.name == resolved_package.package.full_name('-'))
                 });
             }
@@ -155,10 +152,7 @@ impl InstalledPackages {
         packages: Option<&[String]>,
         package_store: &PackageStorage,
     ) -> Result<()> {
-        let mut total_base = (0, 0);
-        let mut total_bin = (0, 0);
-        let mut total_pkg = (0, 0);
-        let mut total = (0, 0);
+        let mut total: HashMap<String, (u32, u64)> = HashMap::new();
 
         let resolved_packages = packages
             .map(|pkgs| {
@@ -182,7 +176,7 @@ impl InstalledPackages {
         resolved_packages.iter().for_each(|package| {
             println!(
                 "- [{}] {1}:{1}-{2} ({3}) ({4})",
-                package.root_path.clone().color(Color::BrightGreen),
+                package.collection.clone().color(Color::BrightGreen),
                 package.name.clone().color(Color::Blue),
                 package.version.clone().color(Color::Green),
                 package
@@ -192,38 +186,36 @@ impl InstalledPackages {
                 format_bytes(package.size).color(Color::Magenta)
             );
 
-            match package.root_path {
-                RootPath::Bin => total_bin = (total_bin.0 + 1, total_bin.1 + package.size),
-                RootPath::Base => total_base = (total_base.0 + 1, total_base.1 + package.size),
-                RootPath::Pkg => total_pkg = (total_pkg.0 + 1, total_pkg.1 + package.size),
-            }
-            total = (total.0 + 1, total.1 + package.size);
+            let (count, size) = total.get(&package.collection).unwrap_or(&(0, 0));
+            total.insert(
+                package.collection.to_owned(),
+                (count + 1, size + package.size),
+            );
         });
         println!();
         println!("{:<2} Installed:", "");
-        println!(
-            "{:<4} base: {} ({})",
-            "",
-            total_base.0.color(Color::BrightGreen),
-            format_bytes(total_base.1)
-        );
-        println!(
-            "{:<4} bin: {} ({})",
-            "",
-            total_bin.0.color(Color::BrightBlue),
-            format_bytes(total_bin.1)
-        );
-        println!(
-            "{:<4} pkg: {} ({})",
-            "",
-            total_pkg.0.color(Color::BrightRed),
-            format_bytes(total_pkg.1)
-        );
+
+        for (collection, (count, size)) in total.iter() {
+            println!(
+                "{:<4} {}: {} ({})",
+                "",
+                collection,
+                count.color(Color::BrightGreen),
+                format_bytes(size.to_owned())
+            );
+        }
+
+        let (count, value) = total
+            .values()
+            .fold((0, 0), |(count_acc, value_acc), &(count, value)| {
+                (count_acc + count, value_acc + value)
+            });
+
         println!(
             "{:<2} Total: {} ({})",
             "",
-            total.0.color(Color::BrightYellow),
-            format_bytes(total.1)
+            count.color(Color::BrightYellow),
+            format_bytes(value)
         );
 
         Ok(())

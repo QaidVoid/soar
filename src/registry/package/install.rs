@@ -15,7 +15,7 @@ use crate::{
         installed::InstalledPackages,
         package::{
             appimage::{check_user_ns, extract_appimage, setup_portable_dir},
-            RootPath,
+            Collection,
         },
     },
     warn,
@@ -169,7 +169,7 @@ impl Installer {
 
         self.save_file().await?;
         self.symlink_bin(&installed_packages).await?;
-        if self.resolved_package.root_path == RootPath::Pkg {
+        if self.resolved_package.collection == Collection::Pkg {
             extract_appimage(package, &self.install_path).await?;
             setup_portable_dir(
                 &package.bin_name,
@@ -201,7 +201,7 @@ impl Installer {
             );
         }
 
-        if self.resolved_package.root_path == RootPath::Pkg {
+        if self.resolved_package.collection == Collection::Pkg {
             check_user_ns().await;
         }
 

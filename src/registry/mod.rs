@@ -7,7 +7,7 @@ use futures::future::try_join_all;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
 use package::{
-    image::PackageImage, parse_package_query, update::Updater, ResolvedPackage, RootPath,
+    image::PackageImage, parse_package_query, update::Updater, ResolvedPackage, Collection,
 };
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
@@ -161,7 +161,7 @@ impl PackageRegistry {
                 println!(
                     "[{}] [{}] {}: {}",
                     installed,
-                    pkg.root_path.clone().color(Color::BrightGreen),
+                    pkg.collection.clone().color(Color::BrightGreen),
                     pkg.package.full_name('/').color(Color::Blue),
                     pkg.package.description,
                 );
@@ -187,7 +187,7 @@ impl PackageRegistry {
                 "{} ({}#{})",
                 package.name.clone().color(Color::BrightGreen),
                 package.clone().full_name('/').color(Color::BrightCyan),
-                pkg.root_path.clone().color(Color::BrightRed)
+                pkg.collection.clone().color(Color::BrightRed)
             );
             let mut data: Vec<(&str, String)> = vec![
                 ("Name", formatted_name),
@@ -319,21 +319,21 @@ impl PackageRegistry {
         installed_guard.info(package_names, &self.storage).await
     }
 
-    pub async fn list(&self, root_path: Option<&str>) -> Result<()> {
-        let root_path = match root_path {
+    pub async fn list(&self, collection: Option<&str>) -> Result<()> {
+        let collection = match collection {
             Some(rp) => match rp.to_lowercase().as_str() {
-                "base" => Ok(Some(RootPath::Base)),
-                "bin" => Ok(Some(RootPath::Bin)),
-                "pkg" => Ok(Some(RootPath::Pkg)),
+                "base" => Ok(Some(Collection::Base)),
+                "bin" => Ok(Some(Collection::Bin)),
+                "pkg" => Ok(Some(Collection::Pkg)),
                 _ => Err(anyhow::anyhow!(
-                    "Invalid root path: {}",
+                    "Invalid collection: {}",
                     rp.color(Color::BrightGreen)
                 )),
             },
             None => Ok(None),
         }?;
 
-        let packages = self.storage.list_packages(root_path);
+        let packages = self.storage.list_packages(collection);
         for resolved_package in packages {
             let package = resolved_package.package.clone();
             let variant_prefix = package
@@ -349,7 +349,7 @@ impl PackageRegistry {
             println!(
                 "[{0}] [{1}] {2}{3}:{3}-{4} ({5})",
                 install_prefix.color(Color::Red),
-                resolved_package.root_path.color(Color::BrightGreen),
+                resolved_package.collection.color(Color::BrightGreen),
                 variant_prefix.color(Color::Blue),
                 package.name.color(Color::Blue),
                 package.version.color(Color::Green),
@@ -414,7 +414,7 @@ pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedP
         println!(
             "  [{}] [{}] {}: {}",
             i + 1,
-            package.root_path.clone().color(Color::BrightGreen),
+            package.collection.clone().color(Color::BrightGreen),
             package.package.full_name('/').color(Color::Blue),
             package.package.description
         );

@@ -80,8 +80,8 @@ pub async fn init() -> Result<()> {
         Commands::Query { query } => {
             registry.query(&query).await?;
         }
-        Commands::ListPackages { root_path } => {
-            registry.list(root_path.as_deref()).await?;
+        Commands::ListPackages { collection } => {
+            registry.list(collection.as_deref()).await?;
         }
         Commands::Inspect { package } => {
             registry.inspect(&package).await?;

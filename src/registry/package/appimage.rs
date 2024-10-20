@@ -126,21 +126,26 @@ pub async fn remove_applinks(name: &str, bin_name: &str, file_path: &Path) -> Re
     let home_data = home_data_path();
     let data_path = Path::new(&home_data);
 
-    let original_icon_path = file_path.with_extension("png");
-    let (w, h) = image::image_dimensions(&original_icon_path)?;
-    let icon_path = data_path
-        .join("icons")
-        .join("hicolor")
-        .join(format!("{}x{}", w, h))
-        .join("apps")
-        .join(bin_name)
-        .with_extension("png");
     let desktop_path = data_path
         .join("applications")
         .join(format!("{name}-soar.desktop"));
 
     remove_link(&desktop_path).await?;
-    remove_link(&icon_path).await?;
+
+    let original_icon_path = file_path.with_extension("png");
+    if original_icon_path.exists() {
+        let (w, h) = image::image_dimensions(&original_icon_path)?;
+
+        let icon_path = data_path
+            .join("icons")
+            .join("hicolor")
+            .join(format!("{}x{}", w, h))
+            .join("apps")
+            .join(bin_name)
+            .with_extension("png");
+
+        remove_link(&icon_path).await?;
+    }
 
     Ok(())
 }

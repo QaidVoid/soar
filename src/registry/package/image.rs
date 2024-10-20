@@ -119,7 +119,7 @@ impl PackageImage {
             Ok(icon) => icon,
             Err(_) => load_default_icon(&format!(
                 "{}-{}.png",
-                resolved_package.repo_name, resolved_package.root_path
+                resolved_package.repo_name, resolved_package.collection
             ))
             .await
             .unwrap_or_default(),

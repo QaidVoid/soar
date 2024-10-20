@@ -30,7 +30,7 @@ use crate::{
 };
 
 use super::{
-    package::{run::Runner, Package, PackageQuery, RootPath},
+    package::{run::Runner, Package, PackageQuery, Collection},
     select_package_variant,
 };
 
@@ -71,7 +71,7 @@ impl PackageStorage {
             1 => &ResolvedPackage {
                 repo_name: packages[0].repo_name.to_owned(),
                 package: packages[0].package.to_owned(),
-                root_path: packages[0].root_path.to_owned(),
+                collection: packages[0].collection.to_owned(),
             },
             _ => select_package_variant(&packages)?,
         };
@@ -178,20 +178,20 @@ impl PackageStorage {
         Ok(())
     }
 
-    pub fn list_packages(&self, root_path: Option<RootPath>) -> Vec<ResolvedPackage> {
+    pub fn list_packages(&self, collection: Option<Collection>) -> Vec<ResolvedPackage> {
         self.repository
             .iter()
             .flat_map(|(repo_name, repo_packages)| {
-                let package_iterators = match root_path {
+                let package_iterators = match collection {
                     Some(ref path) => match path {
-                        RootPath::Bin => vec![(&repo_packages.bin, RootPath::Bin)],
-                        RootPath::Base => vec![(&repo_packages.base, RootPath::Base)],
-                        RootPath::Pkg => vec![(&repo_packages.pkg, RootPath::Pkg)],
+                        Collection::Bin => vec![(&repo_packages.bin, Collection::Bin)],
+                        Collection::Base => vec![(&repo_packages.base, Collection::Base)],
+                        Collection::Pkg => vec![(&repo_packages.pkg, Collection::Pkg)],
                     },
                     None => vec![
-                        (&repo_packages.bin, RootPath::Bin),
-                        (&repo_packages.base, RootPath::Base),
-                        (&repo_packages.pkg, RootPath::Pkg),
+                        (&repo_packages.bin, Collection::Bin),
+                        (&repo_packages.base, Collection::Base),
+                        (&repo_packages.pkg, Collection::Pkg),
                     ],
                 };
 
@@ -200,7 +200,7 @@ impl PackageStorage {
                         let value = path.clone();
                         packages.iter().map(move |package| ResolvedPackage {
                             repo_name: repo_name.clone(),
-                            root_path: value.clone(),
+                            collection: value.clone(),
                             package: package.clone(),
                         })
                     })
@@ -215,24 +215,24 @@ impl PackageStorage {
         let mut resolved_packages = Vec::new();
         for (repo_name, packages) in &self.repository {
             let package_iterators = query
-                .root_path
+                .collection
                 .to_owned()
-                .map(|root_path| match root_path {
-                    RootPath::Bin => vec![(&packages.bin, RootPath::Bin)],
-                    RootPath::Base => vec![(&packages.base, RootPath::Base)],
-                    RootPath::Pkg => vec![(&packages.pkg, RootPath::Pkg)],
+                .map(|collection| match collection {
+                    Collection::Bin => vec![(&packages.bin, Collection::Bin)],
+                    Collection::Base => vec![(&packages.base, Collection::Base)],
+                    Collection::Pkg => vec![(&packages.pkg, Collection::Pkg)],
                 })
                 .unwrap_or_else(|| {
                     vec![
-                        (&packages.bin, RootPath::Bin),
-                        (&packages.base, RootPath::Base),
-                        (&packages.pkg, RootPath::Pkg),
+                        (&packages.bin, Collection::Bin),
+                        (&packages.base, Collection::Base),
+                        (&packages.pkg, Collection::Pkg),
                     ]
                 });
 
             let pkgs: Vec<ResolvedPackage> = package_iterators
                 .iter()
-                .filter_map(|(map, root_path)| {
+                .filter_map(|(map, collection)| {
                     map.get(pkg_name).map(|p| {
                         p.iter()
                             .filter(|pkg| {
@@ -244,7 +244,7 @@ impl PackageStorage {
                             .map(|p| ResolvedPackage {
                                 repo_name: repo_name.to_owned(),
                                 package: p,
-                                root_path: root_path.to_owned(),
+                                collection: collection.to_owned(),
                             })
                             .collect::<Vec<ResolvedPackage>>()
                     })
@@ -266,26 +266,26 @@ impl PackageStorage {
         let query = parse_package_query(query);
         let pkg_name = query.name.trim();
 
-        let mut resolved_packages: Vec<(u32, Package, RootPath, String)> = Vec::new();
+        let mut resolved_packages: Vec<(u32, Package, Collection, String)> = Vec::new();
         for (repo_name, packages) in &self.repository {
             let package_iterators = query
-                .root_path
+                .collection
                 .to_owned()
-                .map(|root_path| match root_path {
-                    RootPath::Bin => vec![(&packages.bin, RootPath::Bin)],
-                    RootPath::Base => vec![(&packages.base, RootPath::Base)],
-                    RootPath::Pkg => vec![(&packages.pkg, RootPath::Pkg)],
+                .map(|collection| match collection {
+                    Collection::Bin => vec![(&packages.bin, Collection::Bin)],
+                    Collection::Base => vec![(&packages.base, Collection::Base)],
+                    Collection::Pkg => vec![(&packages.pkg, Collection::Pkg)],
                 })
                 .unwrap_or_else(|| {
                     vec![
-                        (&packages.bin, RootPath::Bin),
-                        (&packages.base, RootPath::Base),
-                        (&packages.pkg, RootPath::Pkg),
+                        (&packages.bin, Collection::Bin),
+                        (&packages.base, Collection::Base),
+                        (&packages.pkg, Collection::Pkg),
                     ]
                 });
-            let pkgs: Vec<(u32, Package, RootPath, String)> = package_iterators
+            let pkgs: Vec<(u32, Package, Collection, String)> = package_iterators
                 .iter()
-                .flat_map(|(map, root_path)| {
+                .flat_map(|(map, collection)| {
                     map.iter().flat_map(|(_, packages)| {
                         packages.iter().filter_map(|pkg| {
                             let mut score = 0;
@@ -303,7 +303,7 @@ impl PackageStorage {
                                 Some((
                                     score,
                                     pkg.to_owned(),
-                                    root_path.to_owned(),
+                                    collection.to_owned(),
                                     repo_name.to_owned(),
                                 ))
                             } else {
@@ -324,10 +324,10 @@ impl PackageStorage {
             .filter(|(score, _, _, _)| *score > 0)
             .collect::<Vec<_>>()
             .into_iter()
-            .map(|(_, pkg, root_path, repo_name)| ResolvedPackage {
+            .map(|(_, pkg, collection, repo_name)| ResolvedPackage {
                 repo_name,
                 package: pkg,
-                root_path,
+                collection,
             })
             .collect();
 
@@ -408,14 +408,14 @@ impl PackageStorage {
             let mut resolved_pkg = ResolvedPackage::default();
             resolved_pkg.package.name = query.name;
             resolved_pkg.package.variant = query.variant;
-            resolved_pkg.root_path = query.root_path.unwrap_or_default();
+            resolved_pkg.collection = query.collection.unwrap_or_default();
 
             // TODO: don't use just first repo
             let platform = get_platform();
             let repo = &CONFIG.repositories[0];
             let base_url = format!("{}/{}", repo.url, platform);
 
-            let root_path = if resolved_pkg.root_path == RootPath::Base {
+            let collection = if resolved_pkg.collection == Collection::Base {
                 "/Baseutils"
             } else {
                 ""
@@ -423,7 +423,7 @@ impl PackageStorage {
             let download_url = format!(
                 "{}{}/{}",
                 base_url,
-                root_path,
+                collection,
                 resolved_pkg.package.full_name('/')
             );
             resolved_pkg.package.download_url = download_url;
