@@ -73,6 +73,19 @@ impl PackageRegistry {
                 }
             };
             storage.add_repository(&repo.name, packages);
+        }
+
+        Ok(())
+    }
+
+    pub async fn fetch(&mut self) -> Result<()> {
+        for repo in &CONFIG.repositories {
+            let content = self.fetcher.execute(repo).await?;
+
+            let mut de = rmp_serde::Deserializer::new(&content[..]);
+            let packages = RepositoryPackages::deserialize(&mut de)?;
+
+            self.storage.add_repository(&repo.name, packages);
 
             // fetch default icons
             let icon_futures: Vec<_> = repo
@@ -99,19 +112,6 @@ impl PackageRegistry {
 
                 fs::write(icon_path, icon).await?;
             }
-        }
-
-        Ok(())
-    }
-
-    pub async fn fetch(&mut self) -> Result<()> {
-        for repo in &CONFIG.repositories {
-            let content = self.fetcher.execute(repo).await?;
-
-            let mut de = rmp_serde::Deserializer::new(&content[..]);
-            let packages = RepositoryPackages::deserialize(&mut de)?;
-
-            self.storage.add_repository(&repo.name, packages);
         }
 
         Ok(())
