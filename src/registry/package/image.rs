@@ -5,7 +5,7 @@ use base64::{engine::general_purpose, Engine};
 use icy_sixel::{
     sixel_string, DiffusionMethod, MethodForLargest, MethodForRep, PixelFormat, Quality,
 };
-use image::{GenericImageView, ImageFormat};
+use image::{DynamicImage, GenericImageView, ImageFormat, Rgba};
 use termion::raw::IntoRawMode;
 use tokio::fs;
 
@@ -20,8 +20,7 @@ use super::ResolvedPackage;
 pub enum PackageImage {
     Sixel(String),
     Kitty(String),
-    Iterm(String),
-    None,
+    HalfBlock(String),
 }
 
 fn is_kitty_supported() -> Result<bool> {
@@ -101,6 +100,87 @@ fn build_transmit_sequence(base64_data: &str) -> String {
     sequence
 }
 
+async fn halfblock_string(img: &DynamicImage) -> String {
+    let upper_half = '▀';
+    let lower_half = '▄';
+    let (width, height) = img.dimensions();
+    let img_buffer = img.to_rgba8();
+    let mut output = String::with_capacity((width * height * 20) as usize);
+
+    let blend_alpha = |pixel: &Rgba<u8>| -> Rgba<u8> {
+        if pixel[3] == 255 {
+            *pixel
+        } else {
+            let alpha = pixel[3] as f32 / 255.0;
+            Rgba([
+                (pixel[0] as f32 * alpha) as u8,
+                (pixel[1] as f32 * alpha) as u8,
+                (pixel[2] as f32 * alpha) as u8,
+                255,
+            ])
+        }
+    };
+
+    let pixel_to_ansi_fg = |pixel: &Rgba<u8>| -> String {
+        format!("\x1b[38;2;{};{};{}m", pixel[0], pixel[1], pixel[2])
+    };
+
+    let pixel_to_ansi_bg = |pixel: &Rgba<u8>| -> String {
+        format!("\x1b[48;2;{};{};{}m", pixel[0], pixel[1], pixel[2])
+    };
+
+    let is_transparent = |pixel: &Rgba<u8>| -> bool {
+        pixel[3] < 25 // Consider pixels with very low alpha as fully transparent
+    };
+
+    for y in (0..height).step_by(2) {
+        for x in 0..width {
+            let top_pixel = img_buffer.get_pixel(x, y);
+
+            if y + 1 >= height {
+                // Last row for odd-height images
+                if is_transparent(top_pixel) {
+                    output.push(' ');
+                } else {
+                    output.push_str(&pixel_to_ansi_fg(&blend_alpha(top_pixel)));
+                    output.push(upper_half);
+                    output.push_str("\x1b[0m");
+                }
+                continue;
+            }
+
+            let bottom_pixel = img_buffer.get_pixel(x, y + 1);
+            match (is_transparent(top_pixel), is_transparent(bottom_pixel)) {
+                (true, true) => output.push(' '), // Both transparent
+                (true, false) => {
+                    // Only top pixel visible
+                    output.push_str(&pixel_to_ansi_fg(&blend_alpha(bottom_pixel)));
+                    output.push(lower_half);
+                    output.push_str("\x1b[0m");
+                }
+                (false, true) => {
+                    // Only bottom pixel visible
+                    output.push_str(&pixel_to_ansi_fg(&blend_alpha(top_pixel)));
+                    output.push(upper_half);
+                    output.push_str("\x1b[0m");
+                }
+                (false, false) => {
+                    // Both pixels visible
+                    let top = blend_alpha(top_pixel);
+                    let bottom = blend_alpha(bottom_pixel);
+                    output.push_str(&pixel_to_ansi_fg(&bottom));
+                    output.push_str(&pixel_to_ansi_bg(&top));
+                    output.push(lower_half);
+                    output.push_str("\x1b[0m");
+                }
+            }
+        }
+        output.push('\n');
+    }
+
+    output
+}
+
 pub async fn load_default_icon(icon_path: &str) -> Result<Vec<u8>> {
     let icon_path = REGISTRY_PATH.join("icons").join(icon_path);
     let content = if icon_path.exists() {
@@ -129,13 +209,13 @@ impl PackageImage {
         let image_height = (get_font_height() * 16) as u32;
 
         let img = image::load_from_memory(&icon).unwrap();
-        let img = img.resize_exact(
-            image_width,
-            image_height,
-            image::imageops::FilterType::Lanczos3,
-        );
 
         if is_kitty_supported().unwrap_or(false) {
+            let img = img.resize_exact(
+                image_width,
+                image_height,
+                image::imageops::FilterType::Lanczos3,
+            );
             let mut icon = Vec::new();
             let mut cursor = Cursor::new(&mut icon);
             img.write_to(&mut cursor, ImageFormat::Png)
@@ -145,6 +225,11 @@ impl PackageImage {
 
             return Self::Kitty(build_transmit_sequence(&encoded));
         } else if is_sixel_supported().unwrap_or(false) {
+            let img = img.resize_exact(
+                image_width,
+                image_height,
+                image::imageops::FilterType::Lanczos3,
+            );
             let (width, height) = img.dimensions();
             let img_rgba8 = img.to_rgba8();
             let bytes = img_rgba8.as_raw();
@@ -163,6 +248,13 @@ impl PackageImage {
 
             return Self::Sixel(sixel_output);
         };
-        Self::None
+
+        let img = img.resize_exact(
+            30,
+            30,
+            image::imageops::FilterType::Lanczos3,
+        );
+        let halfblock_output = halfblock_string(&img).await;
+        Self::HalfBlock(halfblock_output)
     }
 }

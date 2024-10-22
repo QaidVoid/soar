@@ -286,17 +286,23 @@ impl PackageRegistry {
                     printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
                     println!("{}", String::from_utf8(printable).unwrap());
                 }
-                _ => {
+                PackageImage::HalfBlock(img) => {
+                    printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
+                    printable.extend(format!("\x1B[{}A", 15).as_bytes());
+                    printable.extend(format!("\x1B[{}C", 32).as_bytes());
+
                     data.iter().for_each(|(k, v)| {
                         let value = strip_ansi_escapes::strip(v);
                         let value = String::from_utf8(value).unwrap();
 
                         if !value.is_empty() && value != "null" {
                             let line =
-                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 0);
-                            println!("{}", line);
+                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 4);
+                            printable.extend(format!("\x1B[s{}\x1B[u\x1B[1B", line).as_bytes());
                         }
                     });
+                    printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
+                    println!("{}", String::from_utf8(printable).unwrap());
                 }
             };
         }
