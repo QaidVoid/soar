@@ -13,7 +13,7 @@ use crate::{
     error,
     registry::{
         installed::InstalledPackages,
-        package::appimage::{check_user_ns, extract_appimage, setup_portable_dir},
+        package::appimage::{extract_appimage, setup_portable_dir},
     },
     warn,
 };
@@ -197,10 +197,6 @@ impl Installer {
                     .replace("<br>", "\n     ")
                     .color(Color::BrightYellow)
             );
-        }
-
-        if self.resolved_package.collection == "pkg" {
-            check_user_ns().await;
         }
 
         Ok(())

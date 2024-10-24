@@ -1,5 +1,4 @@
 use std::{
-    cmp::Ordering,
     collections::HashSet,
     fs::File,
     io::{BufReader, BufWriter, Read, Seek, Write},
@@ -9,16 +8,15 @@ use std::{
 use anyhow::{Context, Result};
 use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
-use libc::{fork, unshare, waitpid, CLONE_NEWUSER};
 use tokio::{fs, try_join};
 
 use crate::{
     core::{
         color::{Color, ColorExt},
-        constant::{BIN_PATH, PACKAGES_PATH},
+        constant::{APPIMAGE_MAGIC_BYTES, BIN_PATH, PACKAGES_PATH},
         util::{download, home_data_path},
     },
-    error, info, warn,
+    error, info,
 };
 
 use super::Package;
@@ -82,12 +80,8 @@ fn normalize_image(image: DynamicImage) -> DynamicImage {
 
 fn is_appimage(file: &mut BufReader<File>) -> bool {
     let mut magic_bytes = [0_u8; 16];
-    let appimage_bytes = [
-        0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00, 0x41, 0x49, 0x02, 0x00, 0x00, 0x00, 0x00,
-        0x00,
-    ];
     if file.read_exact(&mut magic_bytes).is_ok() {
-        return appimage_bytes == magic_bytes;
+        return APPIMAGE_MAGIC_BYTES == magic_bytes;
     }
     false
 }
@@ -390,60 +384,4 @@ pub async fn setup_portable_dir(
     }
 
     Ok(())
-}
-
-pub async fn check_user_ns() {
-    let mut errors = Vec::new();
-
-    let pid = unsafe { fork() };
-    match pid.cmp(&0) {
-        Ordering::Equal => {
-            if unsafe { unshare(CLONE_NEWUSER) != 0 } {
-                errors.push("You lack permissions to create user_namespaces");
-            }
-            std::process::exit(0);
-        }
-        Ordering::Greater => {
-            unsafe {
-                waitpid(pid, std::ptr::null_mut(), 0);
-            };
-        }
-        _ => {}
-    }
-
-    if !Path::new("/proc/self/ns/user").exists() {
-        errors.push("Your kernel does not support user namespaces");
-    }
-    if let Ok(content) = fs::read_to_string("/proc/sys/kernel/unprivileged_userns_clone").await {
-        if content.trim() == "0" {
-            errors.push("You must enable unprivileged_userns_clone");
-        }
-    }
-    if let Ok(content) = fs::read_to_string("/proc/sys/user/max_user_namespaces").await {
-        if content.trim() == "0" {
-            errors.push("You must enable max_user_namespaces");
-        }
-    }
-    if let Ok(content) = fs::read_to_string("/proc/sys/kernel/userns_restrict").await {
-        if content.trim() == "1" {
-            errors.push("You must disable userns_restrict");
-        }
-    }
-    if let Ok(content) =
-        fs::read_to_string("/proc/sys/kernel/apparmor_restrict_unprivileged_userns").await
-    {
-        if content.trim() == "1" {
-            errors.push("You must disable apparmor_restrict_unprivileged_userns");
-        }
-    }
-    if !errors.is_empty() {
-        for error in errors {
-            warn!("{}", error);
-            println!(
-                "{} {}",
-                "More info at:".color(Color::Cyan),
-                "https://l.ajam.dev/namespace".color(Color::Blue)
-            )
-        }
-    }
 }

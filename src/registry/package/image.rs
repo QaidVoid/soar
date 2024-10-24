@@ -249,11 +249,7 @@ impl PackageImage {
             return Self::Sixel(sixel_output);
         };
 
-        let img = img.resize_exact(
-            30,
-            30,
-            image::imageops::FilterType::Lanczos3,
-        );
+        let img = img.resize_exact(30, 30, image::imageops::FilterType::Lanczos3);
         let halfblock_output = halfblock_string(&img).await;
         Self::HalfBlock(halfblock_output)
     }

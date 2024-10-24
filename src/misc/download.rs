@@ -9,6 +9,7 @@ use tokio::fs;
 use crate::{
     core::{
         color::{Color, ColorExt},
+        constant::ELF_MAGIC_BYTES,
         util::format_bytes,
     },
     error, success,
@@ -26,8 +27,7 @@ fn extract_filename(url: &str) -> String {
 
 fn is_elf(content: &[u8]) -> bool {
     let magic_bytes = &content[..4.min(content.len())];
-    let elf_bytes = [0x7f, 0x45, 0x4c, 0x46];
-    magic_bytes == elf_bytes
+    magic_bytes == ELF_MAGIC_BYTES
 }
 
 async fn download(url: &str) -> Result<()> {

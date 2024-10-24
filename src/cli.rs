@@ -133,4 +133,8 @@ pub enum Commands {
         #[arg(required = true)]
         links: Vec<String>,
     },
+
+    /// Health check
+    #[clap(name = "health")]
+    Health,
 }

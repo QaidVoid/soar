@@ -40,7 +40,7 @@ impl Updater {
                 .filter_map(|installed| {
                     let pkg = parse_package_query(&installed.name);
                     let query = PackageQuery {
-                        collection: Some(installed.collection.clone().into()),
+                        collection: Some(installed.collection.clone()),
                         ..pkg
                     };
                     registry
@@ -57,7 +57,7 @@ impl Updater {
             if let Some(installed_package) = installed_packages.packages.iter().find(|installed| {
                 installed.repo_name == package.repo_name
                     && installed.name == package.package.full_name('/')
-                    && installed.collection == package.collection.to_string()
+                    && installed.collection == package.collection
             }) {
                 if installed_package.checksum != package.package.bsum {
                     packages_to_update.push(package);

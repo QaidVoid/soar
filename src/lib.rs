@@ -8,6 +8,7 @@ use core::{
     color::{Color, ColorExt},
     config,
     constant::BIN_PATH,
+    health::check_health,
     util::{cleanup, setup_required_paths},
 };
 use std::{env, path::Path};
@@ -94,6 +95,9 @@ pub async fn init() -> Result<()> {
         }
         Commands::Download { links } => {
             download_and_save(links.as_ref()).await?;
+        }
+        Commands::Health => {
+            check_health().await;
         }
     };
 
