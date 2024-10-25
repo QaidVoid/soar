@@ -7,7 +7,7 @@ use tokio::fs;
 use crate::core::{
     color::{Color, ColorExt},
     config::Repository,
-    util::{download, get_platform},
+    util::download,
 };
 
 use super::package::Package;
@@ -26,11 +26,9 @@ impl RegistryFetcher {
     }
 
     pub async fn execute(&self, repository: &Repository) -> Result<Vec<u8>> {
-        let platform = get_platform();
         let url = format!(
-            "{}/{}/{}",
+            "{}/{}",
             repository.url,
-            platform,
             repository
                 .registry
                 .to_owned()
@@ -55,9 +53,7 @@ impl RegistryFetcher {
                                 .rev()
                                 .nth(1)
                                 .map(|v| v.to_owned())
-                                .filter(|v| {
-                                    v != ARCH && v != &platform && v != &platform.replace('-', "_")
-                                }),
+                                .filter(|v| v != ARCH),
                             ..package.clone()
                         });
                         acc
@@ -88,11 +84,9 @@ impl RegistryFetcher {
     }
 
     pub async fn checksum(&self, repository: &Repository) -> Result<Vec<u8>> {
-        let platform = get_platform();
         let url = format!(
-            "{}/{}/{}",
+            "{}/{}",
             repository.url,
-            platform,
             repository
                 .registry
                 .to_owned()

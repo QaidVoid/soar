@@ -1,9 +1,5 @@
 use std::{
-    env::{
-        self,
-        consts::{ARCH, OS},
-    },
-    mem,
+    env, mem,
     path::{Path, PathBuf},
 };
 
@@ -17,7 +13,7 @@ use tokio::{
 
 use super::{
     color::{Color, ColorExt},
-    constant::{BIN_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH},
+    constant::{BIN_PATH, CACHE_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH},
 };
 
 pub fn home_path() -> String {
@@ -71,14 +67,6 @@ pub fn build_path(path: &str) -> Result<PathBuf> {
     }
 
     Ok(PathBuf::from(result))
-}
-
-/// Retrieves the platform string in the format `ARCH-Os`.
-///
-/// This function combines the architecture (e.g., `x86_64`) and the operating
-/// system (e.g., `Linux`) into a single string to identify the platform.
-pub fn get_platform() -> String {
-    format!("{ARCH}-{}{}", &OS[..1].to_uppercase(), &OS[1..])
 }
 
 pub fn format_bytes(bytes: u64) -> String {
@@ -211,19 +199,19 @@ pub async fn download(url: &str, what: &str, silent: bool) -> Result<Vec<u8>> {
 }
 
 pub async fn cleanup() -> Result<()> {
-    let mut cache_dir = home_cache_path();
-    cache_dir.push_str("/soar");
-    let cache_dir = build_path(&cache_dir)?;
+    let mut tree = fs::read_dir(&*CACHE_PATH).await?;
 
-    if cache_dir.exists() {
-        let mut tree = fs::read_dir(&cache_dir).await?;
+    while let Some(entry) = tree.next_entry().await? {
+        let path = entry.path();
+        if xattr::get(&path, "user.managed_by")?.as_deref() != Some(b"soar") {
+            continue;
+        };
 
-        while let Some(entry) = tree.next_entry().await? {
-            let path = entry.path();
-            if xattr::get(&path, "user.managed_by")?.as_deref() != Some(b"soar") {
-                continue;
-            };
+        let modified_at = path.metadata()?.modified()?;
+        let elapsed = modified_at.elapsed()?.as_secs();
+        let cache_ttl = 28800u64;
 
+        if cache_ttl.saturating_sub(elapsed) == 0 {
             fs::remove_file(path).await?;
         }
     }

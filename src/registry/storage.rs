@@ -19,14 +19,15 @@ use crate::{
     core::{
         color::{Color, ColorExt},
         config::CONFIG,
-        util::{build_path, format_bytes, get_platform, home_cache_path},
+        constant::CACHE_PATH,
+        util::format_bytes,
     },
     error,
     registry::{
         installed::InstalledPackages,
         package::{parse_package_query, ResolvedPackage},
     },
-    success, warn,
+    warn,
 };
 
 use super::{
@@ -157,7 +158,7 @@ impl PackageStorage {
                 };
             }
         }
-        success!(
+        println!(
             "Installed {}/{} packages",
             installed_count.load(Ordering::Relaxed).color(Color::Blue),
             resolved_packages.len().color(Color::BrightBlue)
@@ -239,9 +240,13 @@ impl PackageStorage {
         }
     }
 
-    pub async fn search(&self, query: &str) -> Vec<ResolvedPackage> {
+    pub async fn search(&self, query: &str, case_sensitive: bool) -> Vec<ResolvedPackage> {
         let query = parse_package_query(query);
-        let pkg_name = query.name.trim();
+        let pkg_name = if case_sensitive {
+            query.name.trim().to_owned()
+        } else {
+            query.name.trim().to_lowercase()
+        };
         let mut resolved_packages: Vec<(u32, Package, String, String)> = Vec::new();
 
         for (repo_name, packages) in &self.repository {
@@ -251,9 +256,15 @@ impl PackageStorage {
                     .flat_map(|(_, packages)| {
                         packages.iter().filter_map(|pkg| {
                             let mut score = 0;
-                            if pkg.name == pkg_name {
+                            let found_pkg_name = if case_sensitive {
+                                pkg.name.clone()
+                            } else {
+                                pkg.name.to_lowercase()
+                            };
+
+                            if found_pkg_name == pkg_name {
                                 score += 2;
-                            } else if pkg.name.contains(pkg_name) {
+                            } else if found_pkg_name.contains(&pkg_name) {
                                 score += 1;
                             } else {
                                 return None;
@@ -342,11 +353,7 @@ impl PackageStorage {
     }
 
     pub async fn run(&self, command: &[String]) -> Result<()> {
-        let mut cache_dir = home_cache_path();
-        cache_dir.push_str("/soar");
-        let cache_dir = build_path(&cache_dir)?;
-
-        fs::create_dir_all(&cache_dir).await?;
+        fs::create_dir_all(&*CACHE_PATH).await?;
 
         let package_name = &command[0];
         let args = if command.len() > 1 {
@@ -355,32 +362,37 @@ impl PackageStorage {
             &[]
         };
         let runner = if let Ok(resolved_pkg) = self.resolve_package(package_name) {
-            let package_path = cache_dir.join(&resolved_pkg.package.bin_name);
+            let package_path = CACHE_PATH.join(&resolved_pkg.package.bin_name);
             Runner::new(&resolved_pkg, package_path, args)
         } else {
             let query = parse_package_query(package_name);
-            let package_path = cache_dir.join(&query.name);
+            let package_path = CACHE_PATH.join(&query.name);
             let mut resolved_pkg = ResolvedPackage::default();
             resolved_pkg.package.name = query.name;
             resolved_pkg.package.variant = query.variant;
-            resolved_pkg.collection = query.collection.unwrap_or_default();
 
-            // TODO: don't use just first repo
-            let platform = get_platform();
-            let repo = &CONFIG.repositories[0];
-            let base_url = format!("{}/{}", repo.url, platform);
+            // TODO: check all the repo for package instead of choosing the first
+            let base_url = CONFIG
+                .repositories
+                .iter()
+                .find_map(|repo| {
+                    if let Some(collection) = &query.collection {
+                        repo.sources.get(collection).cloned()
+                    } else {
+                        repo.sources.values().next().cloned()
+                    }
+                })
+                .ok_or_else(|| anyhow::anyhow!("No repository found for the package"))?;
 
-            let collection = if resolved_pkg.collection == "base" {
-                "/Baseutils"
-            } else {
-                ""
-            };
-            let download_url = format!(
-                "{}{}/{}",
-                base_url,
-                collection,
-                resolved_pkg.package.full_name('/')
-            );
+            resolved_pkg.collection = query.collection.unwrap_or_else(|| {
+                CONFIG
+                    .repositories
+                    .iter()
+                    .find_map(|repo| repo.sources.keys().next().cloned())
+                    .unwrap_or_default()
+            });
+
+            let download_url = format!("{}/{}", base_url, resolved_pkg.package.full_name('/'));
             resolved_pkg.package.download_url = download_url;
             Runner::new(&resolved_pkg, package_path, args)
         };

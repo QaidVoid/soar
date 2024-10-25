@@ -35,8 +35,8 @@ pub struct Repository {
     /// `metadata.json`
     pub registry: Option<String>,
 
-    /// Paths for different collections
-    pub paths: HashMap<String, String>,
+    /// Download Sources for different collections
+    pub sources: HashMap<String, String>,
 }
 
 impl Repository {
@@ -72,7 +72,7 @@ impl Config {
     }
 
     fn generate(config_path: PathBuf) -> Vec<u8> {
-        let paths = HashMap::from([
+        let sources = HashMap::from([
             ("bin".to_owned(), format!("https://bin.ajam.dev/{ARCH}")),
             (
                 "base".to_owned(),
@@ -85,9 +85,9 @@ impl Config {
             soar_path: "$HOME/.soar".to_owned(),
             repositories: vec![Repository {
                 name: "ajam".to_owned(),
-                url: "https://bin.ajam.dev".to_owned(),
+                url: "https://bin.ajam.dev/{ARCH}".to_owned(),
                 registry: Some("METADATA.AIO.json".to_owned()),
-                paths,
+                sources,
             }],
             parallel: Some(true),
             parallel_limit: Some(2),

@@ -89,7 +89,7 @@ impl PackageRegistry {
 
             // fetch default icons
             let icon_futures: Vec<_> = repo
-                .paths
+                .sources
                 .iter()
                 .map(|(key, base_url)| {
                     let base_url = format!("{}/{}.default.png", base_url, key);
@@ -98,7 +98,7 @@ impl PackageRegistry {
                 .collect();
             let icons = try_join_all(icon_futures).await?;
 
-            for (key, icon) in repo.paths.keys().zip(icons) {
+            for (key, icon) in repo.sources.keys().zip(icons) {
                 let icon_path = REGISTRY_PATH
                     .join("icons")
                     .join(format!("{}-{}.png", repo.name, key));
@@ -143,9 +143,9 @@ impl PackageRegistry {
         self.storage.remove_packages(package_names).await
     }
 
-    pub async fn search(&self, package_name: &str) -> Result<()> {
+    pub async fn search(&self, package_name: &str, case_sensitive: bool) -> Result<()> {
         let installed_guard = self.installed_packages.lock().await;
-        let result = self.storage.search(package_name).await;
+        let result = self.storage.search(package_name, case_sensitive).await;
 
         if result.is_empty() {
             Err(anyhow::anyhow!("No packages found"))

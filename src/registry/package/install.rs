@@ -13,7 +13,7 @@ use crate::{
     error,
     registry::{
         installed::InstalledPackages,
-        package::appimage::{extract_appimage, setup_portable_dir},
+        package::appimage::{integrate_appimage, setup_portable_dir},
     },
     warn,
 };
@@ -64,8 +64,7 @@ impl Installer {
         );
 
         if !force && is_installed {
-            error!("{}: Package is already installed", prefix);
-            return Err(anyhow::anyhow!(""));
+            return Err(anyhow::anyhow!("{}: Package is already installed", prefix));
         }
 
         if is_installed && !is_update {
@@ -166,9 +165,9 @@ impl Installer {
 
         self.save_file().await?;
         self.symlink_bin(&installed_packages).await?;
-        // TODO: use magic bytes instead
-        if self.resolved_package.collection == "pkg" {
-            extract_appimage(package, &self.install_path).await?;
+
+        let ai_integrated = integrate_appimage(package, &self.install_path).await?;
+        if ai_integrated {
             setup_portable_dir(
                 &package.bin_name,
                 &self.install_path,

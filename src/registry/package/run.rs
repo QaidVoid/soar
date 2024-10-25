@@ -116,7 +116,7 @@ impl Runner {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
             if result.is_err() {
                 error!(
-                    "\n{}: Checksum verification failed.",
+                    "{}: Checksum verification failed.",
                     package_name.color(Color::Blue)
                 );
             }

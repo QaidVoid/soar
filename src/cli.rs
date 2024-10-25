@@ -23,23 +23,19 @@ pub enum Commands {
         packages: Vec<String>,
 
         /// Whether to force install the package
-        #[arg(required = false)]
-        #[arg(short, long)]
+        #[arg(required = false, short, long)]
         force: bool,
 
         /// Set portable dir for home & config
-        #[arg(required = false)]
-        #[arg(short, long, num_args = 0..=1)]
+        #[arg(required = false, short, long, num_args = 0..=1)]
         portable: Option<Option<String>>,
 
         /// Set portable home
-        #[arg(required = false)]
-        #[arg(long, num_args = 0..=1)]
+        #[arg(required = false, long, num_args = 0..=1)]
         portable_home: Option<Option<String>>,
 
         /// Set portable config
-        #[arg(required = false)]
-        #[arg(long, num_args = 0..=1)]
+        #[arg(required = false, long, num_args = 0..=1)]
         portable_config: Option<Option<String>>,
     },
 
@@ -50,6 +46,10 @@ pub enum Commands {
         /// Query to search
         #[arg(required = true)]
         query: String,
+
+        /// Case sensitive search
+        #[arg(required = false, long)]
+        case_sensitive: bool
     },
 
     /// Query package info
