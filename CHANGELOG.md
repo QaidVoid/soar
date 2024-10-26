@@ -1,4 +1,11 @@
 
+## [0.3.1](https://github.com/QaidVoid/soar/compare/v0.3.0..v0.3.1) - 2024-10-26
+
+### 🐛 Bug Fixes
+
+- *(config)* Fix default config url - ([1862a7e](https://github.com/QaidVoid/soar/commit/1862a7eb7ca6106bd3834ec6cf24a85e9e09ccc3))
+
+
 ## [0.3.0](https://github.com/QaidVoid/soar/compare/v0.2.0..v0.3.0) - 2024-10-26
 
 ### ⛰️  Features
