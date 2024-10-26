@@ -208,7 +208,18 @@ impl PackageImage {
         let image_width = (get_font_width() * 30) as u32;
         let image_height = (get_font_height() * 16) as u32;
 
-        let img = image::load_from_memory(&icon).unwrap();
+        let img = match image::load_from_memory(&icon) {
+            Ok(img) => img,
+            Err(_) => image::load_from_memory(
+                &load_default_icon(&format!(
+                    "{}-{}.png",
+                    resolved_package.repo_name, resolved_package.collection
+                ))
+                .await
+                .unwrap_or_default(),
+            )
+            .unwrap(),
+        };
 
         if is_kitty_supported().unwrap_or(false) {
             let img = img.resize_exact(

@@ -251,15 +251,19 @@ impl PackageRegistry {
             let pkg_image = PackageImage::from(&pkg).await;
 
             let mut printable = Vec::new();
+            let mut indent = 34;
             match pkg_image {
                 PackageImage::Sixel(img) | PackageImage::HalfBlock(img) => {
-                    printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
+                    indent = 32;
+                    printable.extend(format!("{}\x1B\\", img).as_bytes());
                     printable.extend(cursor::Up(15).to_string().as_bytes());
-                    printable.extend(cursor::Right(32).to_string().as_bytes());
+                    printable.extend(cursor::Right(indent).to_string().as_bytes());
                 }
                 PackageImage::Kitty(img) => {
-                    printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
+                    printable.extend(cursor::Down(1).to_string().as_bytes());
+                    printable.extend(format!("{:<2}{}\n\x1B\\", "", img).as_bytes());
                     printable.extend(cursor::Up(15).to_string().as_bytes());
+                    printable.extend(cursor::Right(indent).to_string().as_bytes());
                 }
             };
 
@@ -267,17 +271,19 @@ impl PackageRegistry {
                 let value = strip_ansi_escapes::strip_str(v);
 
                 if !value.is_empty() && value != "null" {
-                    let available_width = get_terminal_width() - 32;
+                    let available_width = get_terminal_width() - indent as usize;
                     let line = wrap_text(
                         &format!("{}: {}", k.color(Color::Red).bold(), v),
                         available_width,
+                        indent,
                     );
 
                     printable.extend(format!("{}\n", line).as_bytes());
-                    printable.extend(cursor::Right(32).to_string().as_bytes());
+                    printable.extend(cursor::Right(indent).to_string().as_bytes());
                 }
             });
-            printable.extend(cursor::Down(16).to_string().as_bytes());
+
+            printable.extend(cursor::Down(1).to_string().as_bytes());
             println!("{}", String::from_utf8(printable).unwrap());
         }
         Ok(())

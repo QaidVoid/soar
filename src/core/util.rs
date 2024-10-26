@@ -234,7 +234,7 @@ pub async fn remove_broken_symlink() -> Result<()> {
     Ok(())
 }
 
-pub fn wrap_text(text: &str, available_width: usize) -> String {
+pub fn wrap_text(text: &str, available_width: usize, indent: u16) -> String {
     let mut wrapped_text = String::new();
     let mut current_line_length = 0;
     let mut current_ansi_sequence = String::new();
@@ -258,7 +258,7 @@ pub fn wrap_text(text: &str, available_width: usize) -> String {
             // Regular character
             if current_line_length >= available_width {
                 wrapped_text.push('\n');
-                wrapped_text.push_str(&cursor::Right(32).to_string());
+                wrapped_text.push_str(&cursor::Right(indent).to_string());
                 current_line_length = 0;
             }
             wrapped_text.push(c);
