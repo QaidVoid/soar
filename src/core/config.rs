@@ -85,7 +85,7 @@ impl Config {
             soar_path: "$HOME/.soar".to_owned(),
             repositories: vec![Repository {
                 name: "ajam".to_owned(),
-                url: "https://bin.ajam.dev/{ARCH}".to_owned(),
+                url: format!("https://bin.ajam.dev/{ARCH}"),
                 registry: Some("METADATA.AIO.json".to_owned()),
                 sources,
             }],

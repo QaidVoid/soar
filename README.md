@@ -77,7 +77,7 @@ Default configuration
   "repositories": [
     {
       "name": "ajam",
-      "url": "https://bin.ajam.dev",
+      "url": "https://bin.ajam.dev/x86_64",
       "registry": "METADATA.AIO.json",
       "sources": {
         "bin": "https://bin.ajam.dev/x86_64",
