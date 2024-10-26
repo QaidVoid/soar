@@ -1,4 +1,48 @@
 
+## [0.3.0](https://github.com/QaidVoid/soar/compare/v0.2.0..v0.3.0) - 2024-10-26
+
+### ⛰️  Features
+
+- *(appimage)* Allow providing portable home/config dir for appimage - ([446958e](https://github.com/QaidVoid/soar/commit/446958e3a57a58c0a42de3f2103f6f7995a791cf))
+- *(appimage)* Implement appimage integration - ([3d7fbe1](https://github.com/QaidVoid/soar/commit/3d7fbe198e53c1e0b3d88e48d7f917e0f0c6ee30))
+- *(collection)* Allow dynamic collection names - ([d37bad0](https://github.com/QaidVoid/soar/commit/d37bad073642e04276140c3e40d85399fa9a86c5))
+- *(color)* Implement colorful logging - ([61d9ceb](https://github.com/QaidVoid/soar/commit/61d9ceb1f39c43fa86cc2da8ab8292e4ffa2ec70))
+- *(health)* Include fuse check - ([ee9d3b7](https://github.com/QaidVoid/soar/commit/ee9d3b7984ce67c13f712d7efc22c3619b18903e))
+- *(health)* Add health check command - ([293960f](https://github.com/QaidVoid/soar/commit/293960fa9eb5365a34d5794ef8889ff111087aac))
+- *(image)* Add halfblock image support - ([a1e2dc3](https://github.com/QaidVoid/soar/commit/a1e2dc37d5b9b30f76e7e8c59a4126afe517b58f))
+- *(image)* Add sixel support - ([88433d3](https://github.com/QaidVoid/soar/commit/88433d3c2b399f4269b4885514b88b1ca7c5a14b))
+- *(image)* Kitty graphics protocol image support for query - ([fb1da68](https://github.com/QaidVoid/soar/commit/fb1da6891f1dfcf24ef2f9ad50d7cba68d3b0b87))
+- *(pkg)* Fetch remote image/desktop file if pkg is not appimage - ([2e5b15e](https://github.com/QaidVoid/soar/commit/2e5b15e1622d60f99d1e29a5885cbf0f31691a84))
+
+### 🐛 Bug Fixes
+
+- *(appimage)* Sanity checks for kernel features & user namespace - ([b8dd511](https://github.com/QaidVoid/soar/commit/b8dd511d2425848b2f479660ce9349c7ec90a243))
+- *(appimage)* Prevent creating portable dirs by default - ([cc66cd3](https://github.com/QaidVoid/soar/commit/cc66cd3580eb4b8d039ac09c2ae279f3c1c1ba26))
+- *(appimage)* Set default portable path if arg is not provided - ([5a34205](https://github.com/QaidVoid/soar/commit/5a34205d6e2016cd336021f520dae6b0996810a7))
+- *(appimage)* Use path check for ownership - ([7181629](https://github.com/QaidVoid/soar/commit/7181629ad4b94c7bcefa3d50348f3964be80aae7))
+- *(appimage)* Handle symlinks and use proper icon path - ([aee9282](https://github.com/QaidVoid/soar/commit/aee92820469db7a39aea30c5cc1fca56ba7a8e05))
+- *(fetch)* Fetch default icons only when fetcher is called - ([fdefcd5](https://github.com/QaidVoid/soar/commit/fdefcd59d54fe3357f0c096cca26d1fdedf27001))
+- *(image)* Fetch default fallback image - ([bc92204](https://github.com/QaidVoid/soar/commit/bc9220451e2f22d6fba8761d487afee4485f2fd1))
+- *(registry)* Update outdated local registry - ([6a967df](https://github.com/QaidVoid/soar/commit/6a967df7a249e1ebb42a61cbec661908d0b2343d))
+- *(userns-check)* Check clone_newuser support - ([2e1cf13](https://github.com/QaidVoid/soar/commit/2e1cf1332af9a858482ddd48cea035d0e8ead98c))
+- *(wrap)* Fix text wrapping - ([e7b6d71](https://github.com/QaidVoid/soar/commit/e7b6d71e38720ad95bf4914fe63e6395b0d8f0ab))
+
+### 🚜 Refactor
+
+- *(collection)* Rename root_path to collection - ([a480c85](https://github.com/QaidVoid/soar/commit/a480c8581a7531ed9b8c94ebedf16975c4bdaf63))
+- *(color)* Update colors in query - ([adc257b](https://github.com/QaidVoid/soar/commit/adc257bf8235b17512eae113d8f96a5916aa1e6a))
+- *(package)* Reduce hard-coded collections - ([041e824](https://github.com/QaidVoid/soar/commit/041e824fca58e3c2c24f5417e1a7a772ce563746))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(readme)* Update Readme - ([8f43a68](https://github.com/QaidVoid/soar/commit/8f43a6843e73530dcca086591831bb0c415f78a0))
+- *(workflow)* Run nightly on every commit - ([42ddf90](https://github.com/QaidVoid/soar/commit/42ddf90857a1c9a0ff264dbac45e1fda114c0935))
+- *(workflow)* Add nightly workflow - ([f697a5f](https://github.com/QaidVoid/soar/commit/f697a5f86adc4c75822e0c8fc3b3a0e7dacd9479))
+
+## New Contributors ❤️
+
+* @dependabot[bot] made their first contribution in [#1](https://github.com/QaidVoid/soar/pull/1)
+
 ## [0.2.0](https://github.com/QaidVoid/soar/compare/v0.1.0..v0.2.0) - 2024-10-11
 
 ### ⛰️  Features
