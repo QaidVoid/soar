@@ -9,6 +9,7 @@ use loader::RegistryLoader;
 use package::{image::PackageImage, parse_package_query, update::Updater, ResolvedPackage};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
+use termion::cursor;
 use tokio::{fs, sync::Mutex};
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
         color::{Color, ColorExt},
         config::CONFIG,
         constant::REGISTRY_PATH,
-        util::{download, wrap_text},
+        util::{download, get_terminal_width, wrap_text},
     },
     error, info, success,
 };
@@ -251,60 +252,33 @@ impl PackageRegistry {
 
             let mut printable = Vec::new();
             match pkg_image {
-                PackageImage::Sixel(img) => {
+                PackageImage::Sixel(img) | PackageImage::HalfBlock(img) => {
                     printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
-                    printable.extend(format!("\x1B[{}A", 15).as_bytes());
-                    printable.extend(format!("\x1B[{}C", 32).as_bytes());
-
-                    data.iter().for_each(|(k, v)| {
-                        let value = strip_ansi_escapes::strip(v);
-                        let value = String::from_utf8(value).unwrap();
-
-                        if !value.is_empty() && value != "null" {
-                            let line =
-                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 4);
-                            printable.extend(format!("\x1B[s{}\x1B[u\x1B[1B", line).as_bytes());
-                        }
-                    });
-                    printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
-                    println!("{}", String::from_utf8(printable).unwrap());
+                    printable.extend(cursor::Up(15).to_string().as_bytes());
+                    printable.extend(cursor::Right(32).to_string().as_bytes());
                 }
                 PackageImage::Kitty(img) => {
                     printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
-                    printable.extend(format!("\x1B[{}A", 15).as_bytes());
-
-                    data.iter().for_each(|(k, v)| {
-                        let value = strip_ansi_escapes::strip(v);
-                        let value = String::from_utf8(value).unwrap();
-
-                        if !value.is_empty() && value != "null" {
-                            let line =
-                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 4);
-                            printable.extend(format!("\x1B[s{}\x1B[u\x1B[1B", line).as_bytes());
-                        }
-                    });
-                    printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
-                    println!("{}", String::from_utf8(printable).unwrap());
-                }
-                PackageImage::HalfBlock(img) => {
-                    printable.extend(format!("{:<2}{}\x1B\\", "", img).as_bytes());
-                    printable.extend(format!("\x1B[{}A", 15).as_bytes());
-                    printable.extend(format!("\x1B[{}C", 32).as_bytes());
-
-                    data.iter().for_each(|(k, v)| {
-                        let value = strip_ansi_escapes::strip(v);
-                        let value = String::from_utf8(value).unwrap();
-
-                        if !value.is_empty() && value != "null" {
-                            let line =
-                                wrap_text(&format!("{}: {}", k.color(Color::Red).bold(), v), 4);
-                            printable.extend(format!("\x1B[s{}\x1B[u\x1B[1B", line).as_bytes());
-                        }
-                    });
-                    printable.extend(format!("\n\x1B[{}B", 16).as_bytes());
-                    println!("{}", String::from_utf8(printable).unwrap());
+                    printable.extend(cursor::Up(15).to_string().as_bytes());
                 }
             };
+
+            data.iter().for_each(|(k, v)| {
+                let value = strip_ansi_escapes::strip_str(v);
+
+                if !value.is_empty() && value != "null" {
+                    let available_width = get_terminal_width() - 32;
+                    let line = wrap_text(
+                        &format!("{}: {}", k.color(Color::Red).bold(), v),
+                        available_width,
+                    );
+
+                    printable.extend(format!("{}\n", line).as_bytes());
+                    printable.extend(cursor::Right(32).to_string().as_bytes());
+                }
+            });
+            printable.extend(cursor::Down(16).to_string().as_bytes());
+            println!("{}", String::from_utf8(printable).unwrap());
         }
         Ok(())
     }

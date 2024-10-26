@@ -49,7 +49,7 @@ pub enum Commands {
 
         /// Case sensitive search
         #[arg(required = false, long)]
-        case_sensitive: bool
+        case_sensitive: bool,
     },
 
     /// Query package info

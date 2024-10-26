@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::LazyLock};
 
 use super::{config::CONFIG, util::build_path};
 
-pub static CACHE_PATH: LazyLock<PathBuf> = 
+pub static CACHE_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| build_path(&CONFIG.soar_path).unwrap().join("cache"));
 pub static REGISTRY_PATH: LazyLock<PathBuf> =
     LazyLock::new(|| build_path(&CONFIG.soar_path).unwrap().join("registry"));

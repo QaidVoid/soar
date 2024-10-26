@@ -6,6 +6,7 @@ use std::{
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
+use termion::cursor;
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt},
@@ -233,20 +234,35 @@ pub async fn remove_broken_symlink() -> Result<()> {
     Ok(())
 }
 
-//  FIXME: handle ansi sequences
-pub fn wrap_text(text: &str, padding: usize) -> String {
+pub fn wrap_text(text: &str, available_width: usize) -> String {
     let mut wrapped_text = String::new();
-    let width = get_terminal_width() - padding / 2;
-    let mut pos = 0;
+    let mut current_line_length = 0;
+    let mut current_ansi_sequence = String::new();
+    let mut chars = text.chars().peekable();
 
-    while pos < text.len() {
-        let end = std::cmp::min(pos + width, text.len());
-        let chunk = &text[pos..end];
-
-        wrapped_text.push_str(&format!("{:<padding$}{}", "", chunk, padding = padding));
-        pos = end;
-        if pos < text.len() {
-            wrapped_text.push('\n');
+    while let Some(c) = chars.next() {
+        if c == '\x1B' {
+            // Start of ANSI escape sequence
+            current_ansi_sequence.push(c);
+            while let Some(&next_c) = chars.peek() {
+                if !next_c.is_ascii_alphabetic() {
+                    current_ansi_sequence.push(chars.next().unwrap());
+                } else {
+                    current_ansi_sequence.push(chars.next().unwrap());
+                    wrapped_text.push_str(&current_ansi_sequence);
+                    current_ansi_sequence.clear();
+                    break;
+                }
+            }
+        } else {
+            // Regular character
+            if current_line_length >= available_width {
+                wrapped_text.push('\n');
+                wrapped_text.push_str(&cursor::Right(32).to_string());
+                current_line_length = 0;
+            }
+            wrapped_text.push(c);
+            current_line_length += 1;
         }
     }
 

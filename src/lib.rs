@@ -76,7 +76,10 @@ pub async fn init() -> Result<()> {
         Commands::ListInstalledPackages { packages } => {
             registry.info(packages.as_deref()).await?;
         }
-        Commands::Search { query, case_sensitive} => {
+        Commands::Search {
+            query,
+            case_sensitive,
+        } => {
             registry.search(&query, case_sensitive).await?;
         }
         Commands::Query { query } => {
