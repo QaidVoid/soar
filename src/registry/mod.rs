@@ -6,7 +6,9 @@ use fetcher::RegistryFetcher;
 use futures::future::try_join_all;
 use installed::InstalledPackages;
 use loader::RegistryLoader;
-use package::{image::PackageImage, parse_package_query, update::Updater, ResolvedPackage};
+use package::{
+    image::get_package_image_string, parse_package_query, update::Updater, ResolvedPackage,
+};
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use termion::cursor;
@@ -248,24 +250,14 @@ impl PackageRegistry {
                 ));
             }
 
-            let pkg_image = PackageImage::from(&pkg).await;
+            let pkg_image = get_package_image_string(&pkg).await;
 
             let mut printable = Vec::new();
-            let mut indent = 34;
-            match pkg_image {
-                PackageImage::Sixel(img) | PackageImage::HalfBlock(img) => {
-                    indent = 32;
-                    printable.extend(format!("{}\x1B\\", img).as_bytes());
-                    printable.extend(cursor::Up(15).to_string().as_bytes());
-                    printable.extend(cursor::Right(indent).to_string().as_bytes());
-                }
-                PackageImage::Kitty(img) => {
-                    printable.extend(cursor::Down(1).to_string().as_bytes());
-                    printable.extend(format!("{:<2}{}\n\x1B\\", "", img).as_bytes());
-                    printable.extend(cursor::Up(15).to_string().as_bytes());
-                    printable.extend(cursor::Right(indent).to_string().as_bytes());
-                }
-            };
+            let indent = 32;
+
+            printable.extend(pkg_image.as_bytes());
+            printable.extend(cursor::Up(15).to_string().as_bytes());
+            printable.extend(cursor::Right(indent).to_string().as_bytes());
 
             data.iter().for_each(|(k, v)| {
                 let value = strip_ansi_escapes::strip_str(v);

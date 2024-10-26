@@ -16,13 +16,6 @@ use crate::core::{
 
 use super::ResolvedPackage;
 
-#[derive(Debug, Clone)]
-pub enum PackageImage {
-    Sixel(String),
-    Kitty(String),
-    HalfBlock(String),
-}
-
 fn is_kitty_supported() -> Result<bool> {
     let mut stdout = io::stdout().into_raw_mode()?;
     let sequence = "\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\\x1b[c";
@@ -97,6 +90,7 @@ fn build_transmit_sequence(base64_data: &str) -> String {
         sequence.push_str("\x1b\\");
     }
 
+    sequence.push('\n');
     sequence
 }
 
@@ -191,77 +185,77 @@ pub async fn load_default_icon(icon_path: &str) -> Result<Vec<u8>> {
     Ok(content)
 }
 
-impl PackageImage {
-    pub async fn from(resolved_package: &ResolvedPackage) -> Self {
-        let package = &resolved_package.package;
-        let icon = download(&package.icon, "icon", true).await;
-        let icon = match icon {
-            Ok(icon) => icon,
-            Err(_) => load_default_icon(&format!(
+pub async fn get_package_image_string(resolved_package: &ResolvedPackage) -> String {
+    let package = &resolved_package.package;
+    let icon = download(&package.icon, "icon", true).await;
+    let icon = match icon {
+        Ok(icon) => icon,
+        Err(_) => load_default_icon(&format!(
+            "{}-{}.png",
+            resolved_package.repo_name, resolved_package.collection
+        ))
+        .await
+        .unwrap_or_default(),
+    };
+
+    let image_width = (get_font_width() * 30) as u32;
+    let image_height = (get_font_height() * 16) as u32;
+
+    let img = match image::load_from_memory(&icon) {
+        Ok(img) => img,
+        Err(_) => image::load_from_memory(
+            &load_default_icon(&format!(
                 "{}-{}.png",
                 resolved_package.repo_name, resolved_package.collection
             ))
             .await
             .unwrap_or_default(),
-        };
+        )
+        .unwrap(),
+    };
 
-        let image_width = (get_font_width() * 30) as u32;
-        let image_height = (get_font_height() * 16) as u32;
+    if is_kitty_supported().unwrap_or(false) {
+        let img = img.resize_exact(
+            image_width,
+            image_height,
+            image::imageops::FilterType::Lanczos3,
+        );
 
-        let img = match image::load_from_memory(&icon) {
-            Ok(img) => img,
-            Err(_) => image::load_from_memory(
-                &load_default_icon(&format!(
-                    "{}-{}.png",
-                    resolved_package.repo_name, resolved_package.collection
-                ))
-                .await
-                .unwrap_or_default(),
-            )
-            .unwrap(),
-        };
+        let mut icon = Vec::new();
+        let mut cursor = Cursor::new(&mut icon);
+        img.write_to(&mut cursor, ImageFormat::Png)
+            .expect("Failed to write image in PNG format");
 
-        if is_kitty_supported().unwrap_or(false) {
-            let img = img.resize_exact(
-                image_width,
-                image_height,
-                image::imageops::FilterType::Lanczos3,
-            );
-            let mut icon = Vec::new();
-            let mut cursor = Cursor::new(&mut icon);
-            img.write_to(&mut cursor, ImageFormat::Png)
-                .expect("Failed to write image in PNG format");
+        let encoded = general_purpose::STANDARD.encode(&icon);
 
-            let encoded = general_purpose::STANDARD.encode(&icon);
+        return build_transmit_sequence(&encoded);
+    } else if is_sixel_supported().unwrap_or(false) {
+        let img = img.resize_exact(
+            image_width,
+            image_height,
+            image::imageops::FilterType::Lanczos3,
+        );
 
-            return Self::Kitty(build_transmit_sequence(&encoded));
-        } else if is_sixel_supported().unwrap_or(false) {
-            let img = img.resize_exact(
-                image_width,
-                image_height,
-                image::imageops::FilterType::Lanczos3,
-            );
-            let (width, height) = img.dimensions();
-            let img_rgba8 = img.to_rgba8();
-            let bytes = img_rgba8.as_raw();
+        let (width, height) = img.dimensions();
+        let img_rgba8 = img.to_rgba8();
+        let bytes = img_rgba8.as_raw();
 
-            let sixel_output = sixel_string(
-                bytes,
-                width as i32,
-                height as i32,
-                PixelFormat::RGBA8888,
-                DiffusionMethod::Stucki,
-                MethodForLargest::Auto,
-                MethodForRep::Auto,
-                Quality::HIGH,
-            )
-            .unwrap();
+        let sixel_output = sixel_string(
+            bytes,
+            width as i32,
+            height as i32,
+            PixelFormat::RGBA8888,
+            DiffusionMethod::Stucki,
+            MethodForLargest::Auto,
+            MethodForRep::Auto,
+            Quality::HIGH,
+        )
+        .unwrap();
+        let sixel_output = sixel_output.replace("\x1BPq", "\x1BP0;1q");
 
-            return Self::Sixel(sixel_output);
-        };
+        return sixel_output;
+    };
 
-        let img = img.resize_exact(30, 30, image::imageops::FilterType::Lanczos3);
-        let halfblock_output = halfblock_string(&img).await;
-        Self::HalfBlock(halfblock_output)
-    }
+    let img = img.resize_exact(30, 30, image::imageops::FilterType::Lanczos3);
+    halfblock_string(&img).await
 }
