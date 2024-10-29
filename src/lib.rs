@@ -56,7 +56,6 @@ pub async fn init() -> Result<()> {
                 .install_packages(
                     &packages,
                     force,
-                    false,
                     portable,
                     portable_home,
                     portable_config,

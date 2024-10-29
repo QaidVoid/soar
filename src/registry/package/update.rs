@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use anyhow::Result;
+use indicatif::MultiProgress;
 use tokio::sync::MutexGuard;
 
 use crate::{
@@ -53,6 +56,7 @@ impl Updater {
 
         let mut packages_to_update: Vec<ResolvedPackage> = Vec::new();
 
+        let multi_progress = Arc::new(MultiProgress::new());
         for package in packages {
             if let Some(installed_package) = installed_packages.packages.iter().find(|installed| {
                 installed.repo_name == package.repo_name
@@ -80,11 +84,11 @@ impl Updater {
                         idx,
                         packages_to_update.len(),
                         true,
-                        true,
                         registry.installed_packages.clone(),
                         None,
                         None,
                         None,
+                        multi_progress.clone()
                     )
                     .await?;
                 update_count += 1;

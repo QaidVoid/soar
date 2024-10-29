@@ -8,6 +8,7 @@ pub mod update;
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
+use indicatif::MultiProgress;
 use install::Installer;
 use remove::Remover;
 use serde::{Deserialize, Serialize};
@@ -51,11 +52,11 @@ impl ResolvedPackage {
         idx: usize,
         total: usize,
         force: bool,
-        is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
+        multi_progress: Arc<MultiProgress>
     ) -> Result<()> {
         let install_path = self.package.get_install_path(&self.package.bsum);
         let mut installer = Installer::new(self, install_path);
@@ -65,10 +66,10 @@ impl ResolvedPackage {
                 total,
                 installed_packages,
                 force,
-                is_update,
                 portable,
                 portable_home,
                 portable_config,
+                multi_progress
             )
             .await?;
         Ok(())

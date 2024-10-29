@@ -2,6 +2,7 @@ use std::{fs::Permissions, io::Write, os::unix::fs::PermissionsExt, path::PathBu
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
+use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 use tokio::{fs, io::AsyncWriteExt, sync::Mutex};
 
 use crate::{
@@ -45,10 +46,10 @@ impl Installer {
         total: usize,
         installed_packages: Arc<Mutex<InstalledPackages>>,
         force: bool,
-        is_update: bool,
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
+        multi_progress: Arc<MultiProgress>,
     ) -> Result<()> {
         let package = &self.resolved_package.package;
         let is_installed = installed_packages
@@ -65,10 +66,6 @@ impl Installer {
 
         if !force && is_installed {
             return Err(anyhow::anyhow!("{}: Package is already installed", prefix));
-        }
-
-        if is_installed && !is_update {
-            warn!("{}: Reinstalling package", prefix);
         }
 
         if let Some(parent) = self.temp_path.parent() {
@@ -98,11 +95,43 @@ impl Installer {
             .content_length()
             .map(|cl| cl + downloaded_bytes)
             .unwrap_or(0);
-        println!(
-            "{}: Downloading package [{}]",
-            prefix,
-            format_bytes(total_size).color(Color::Yellow)
+
+        let download_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
+        download_progress.set_style(
+            ProgressStyle::with_template(
+                "{msg:48} [{wide_bar:.green/white}] {speed:14} {computed_bytes:22}",
+            )
+            .unwrap()
+            .with_key(
+                "computed_bytes",
+                |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                    write!(
+                        w,
+                        "{}/{}",
+                        format_bytes(state.pos()),
+                        format_bytes(state.len().unwrap_or_default())
+                    )
+                    .unwrap()
+                },
+            )
+            .with_key(
+                "speed",
+                |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                    let pos = state.pos() as f64;
+                    let elapsed = state.elapsed().as_secs_f64();
+                    let speed = if elapsed > 0.0 {
+                        (pos / elapsed) as u64
+                    } else {
+                        0
+                    };
+                    write!(w, "{}/s", format_bytes(speed)).unwrap()
+                },
+            )
+            .progress_chars("━━"),
         );
+
+        download_progress.set_length(total_size);
+        download_progress.set_message(prefix.clone());
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
@@ -125,9 +154,12 @@ impl Installer {
             while let Some(chunk) = stream.next().await {
                 let chunk = chunk.context(format!("{}: Failed to read chunk", prefix))?;
                 file.write_all(&chunk).await?;
+                download_progress.inc(chunk.len() as u64);
             }
             file.flush().await?;
         }
+
+        download_progress.finish();
 
         if package.bsum == "null" {
             error!(
@@ -185,7 +217,20 @@ impl Installer {
                 .await?;
         }
 
-        println!("{}: Installed package.", prefix);
+        let installed_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
+        installed_progress.set_style(
+            ProgressStyle::default_bar()
+                .template("{msg}")
+                .unwrap()
+                .progress_chars("##-"),
+        );
+        installed_progress.finish_with_message(format!(
+            "[{}/{}] Installed {}",
+            (idx + 1).color(Color::Green),
+            total.color(Color::Cyan),
+            package.full_name('/').color(Color::Blue)
+        ));
+
         if !package.note.is_empty() {
             println!(
                 "{}: [{}] {}",

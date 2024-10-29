@@ -124,7 +124,6 @@ impl PackageRegistry {
         &self,
         package_names: &[String],
         force: bool,
-        is_update: bool,
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
@@ -133,7 +132,6 @@ impl PackageRegistry {
             .install_packages(
                 package_names,
                 force,
-                is_update,
                 self.installed_packages.clone(),
                 portable,
                 portable_home,
@@ -354,7 +352,6 @@ impl PackageRegistry {
                         .install_packages(
                             &[package_name.to_owned()],
                             true,
-                            false,
                             self.installed_packages.clone(),
                             None,
                             None,

@@ -8,7 +8,8 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use futures::StreamExt;
+use futures::{future::join_all, StreamExt};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs,
@@ -83,7 +84,6 @@ impl PackageStorage {
         &self,
         package_names: &[String],
         force: bool,
-        is_update: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
         portable: Option<String>,
         portable_home: Option<String>,
@@ -95,7 +95,46 @@ impl PackageStorage {
             .collect();
         let resolved_packages = resolved_packages?;
 
+        let results: Vec<_> = join_all(resolved_packages.iter().map(|package| {
+            let installed_packages = Arc::clone(&installed_packages);
+            let package = package.clone();
+
+            async move {
+                let is_installed = installed_packages.lock().await.is_installed(&package);
+                (package, is_installed)
+            }
+        }))
+        .await;
+
+        let resolved_packages: Vec<ResolvedPackage> = results
+            .into_iter()
+            .filter_map(|(package, is_installed)| {
+                if is_installed {
+                    warn!(
+                        "{} is already installed - {}",
+                        package.package.full_name('/'),
+                        if force { "reinstalling" } else { "skipping" }
+                    );
+
+                    if force {
+                        Some(package)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(package)
+                }
+            })
+            .collect();
         let installed_count = Arc::new(AtomicU64::new(0));
+
+        let multi_progress = Arc::new(MultiProgress::new());
+        let total_progress_bar =
+            multi_progress.add(ProgressBar::new(resolved_packages.len() as u64));
+
+        total_progress_bar
+            .set_style(ProgressStyle::with_template("Installing {pos}/{len}").unwrap());
+
         if CONFIG.parallel.unwrap_or_default() {
             let semaphore = Arc::new(Semaphore::new(CONFIG.parallel_limit.unwrap_or(2) as usize));
             let mut handles = Vec::new();
@@ -109,6 +148,8 @@ impl PackageStorage {
                 let portable = portable.clone();
                 let portable_home = portable_home.clone();
                 let portable_config = portable_config.clone();
+                let total_pb = total_progress_bar.clone();
+                let multi_progress = multi_progress.clone();
 
                 let handle = tokio::spawn(async move {
                     if let Err(e) = package
@@ -116,17 +157,18 @@ impl PackageStorage {
                             idx,
                             pkgs_len,
                             force,
-                            is_update,
                             installed_packages,
                             portable,
                             portable_home,
                             portable_config,
+                            multi_progress,
                         )
                         .await
                     {
                         error!("{}", e);
                     } else {
                         ic.fetch_add(1, Ordering::Relaxed);
+                        total_pb.inc(1);
                     };
                     drop(permit);
                 });
@@ -144,20 +186,23 @@ impl PackageStorage {
                         idx,
                         resolved_packages.len(),
                         force,
-                        is_update,
                         installed_packages.clone(),
                         portable.clone(),
                         portable_home.clone(),
                         portable_config.clone(),
+                        multi_progress.clone(),
                     )
                     .await
                 {
                     error!("{}", e);
                 } else {
                     installed_count.fetch_add(1, Ordering::Relaxed);
+                    total_progress_bar.inc(1);
                 };
             }
         }
+
+        total_progress_bar.finish_and_clear();
         println!(
             "Installed {}/{} packages",
             installed_count.load(Ordering::Relaxed).color(Color::Blue),
