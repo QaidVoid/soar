@@ -297,6 +297,9 @@ impl PackageRegistry {
 
     pub async fn list(&self, collection: Option<&str>) -> Result<()> {
         let packages = self.storage.list_packages(collection);
+        if packages.is_empty() {
+            anyhow::bail!("No packages found");
+        }
         for resolved_package in packages {
             let package = resolved_package.package.clone();
             let variant_prefix = package

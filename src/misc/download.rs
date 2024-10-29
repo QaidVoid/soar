@@ -4,7 +4,10 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use futures::StreamExt;
 use reqwest::Url;
-use tokio::fs;
+use tokio::{
+    fs::{self, File},
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+};
 
 use crate::{
     core::{
@@ -25,9 +28,17 @@ fn extract_filename(url: &str) -> String {
         })
 }
 
-fn is_elf(content: &[u8]) -> bool {
-    let magic_bytes = &content[..4.min(content.len())];
-    magic_bytes == ELF_MAGIC_BYTES
+async fn is_elf(file_path: &Path) -> bool {
+    let Ok(file) = File::open(file_path).await else {
+        return false;
+    };
+    let mut file = BufReader::new(file);
+
+    let mut magic_bytes = [0_u8; 4];
+    if file.read_exact(&mut magic_bytes).await.is_ok() {
+        return magic_bytes == ELF_MAGIC_BYTES;
+    }
+    false
 }
 
 async fn download(url: &str) -> Result<()> {
@@ -43,7 +54,8 @@ async fn download(url: &str) -> Result<()> {
     }
 
     let filename = extract_filename(url);
-    let mut content = Vec::new();
+    let filename = Path::new(&filename);
+    let temp_path = format!("{}.tmp", filename.display());
 
     println!(
         "Downloading file from {} [{}]",
@@ -52,19 +64,26 @@ async fn download(url: &str) -> Result<()> {
     );
 
     let mut stream = response.bytes_stream();
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(&temp_path)
+        .await
+        .context("Failed to open temp file for writing")?;
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.context("Failed to read chunk")?;
-        content.extend_from_slice(&chunk);
+        file.write_all(&chunk).await?;
     }
 
-    fs::write(&filename, &content).await?;
+    fs::rename(&temp_path, &filename).await?;
 
-    if is_elf(&content) {
+    if is_elf(filename).await {
         fs::set_permissions(&filename, Permissions::from_mode(0o755)).await?;
     }
 
-    success!("Downloaded {}", filename.color(Color::Blue));
+    success!("Downloaded {}", filename.display().color(Color::Blue));
 
     Ok(())
 }
