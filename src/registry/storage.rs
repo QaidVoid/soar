@@ -224,7 +224,8 @@ impl PackageStorage {
     }
 
     pub fn list_packages(&self, collection: Option<&str>) -> Vec<ResolvedPackage> {
-        self.repository
+        let mut packages: Vec<ResolvedPackage> = self
+            .repository
             .iter()
             .flat_map(|(repo_name, repo_packages)| {
                 repo_packages
@@ -241,7 +242,17 @@ impl PackageStorage {
                         })
                     })
             })
-            .collect()
+            .collect();
+
+        packages.sort_by(|a, b| {
+            let collection_cmp = a.collection.cmp(&b.collection);
+            if collection_cmp == std::cmp::Ordering::Equal {
+                a.package.full_name('-').cmp(&b.package.full_name('-'))
+            } else {
+                collection_cmp
+            }
+        });
+        packages
     }
 
     pub fn get_packages(&self, query: &PackageQuery) -> Option<Vec<ResolvedPackage>> {

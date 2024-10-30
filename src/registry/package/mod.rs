@@ -36,6 +36,7 @@ pub struct Package {
     pub category: String,
     pub extra_bins: String,
     pub icon: String,
+    pub bin_id: Option<String>,
     pub variant: Option<String>,
 }
 
@@ -56,7 +57,7 @@ impl ResolvedPackage {
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
-        multi_progress: Arc<MultiProgress>
+        multi_progress: Arc<MultiProgress>,
     ) -> Result<()> {
         let install_path = self.package.get_install_path(&self.package.bsum);
         let mut installer = Installer::new(self, install_path);
@@ -69,7 +70,7 @@ impl ResolvedPackage {
                 portable,
                 portable_home,
                 portable_config,
-                multi_progress
+                multi_progress,
             )
             .await?;
         Ok(())

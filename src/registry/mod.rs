@@ -184,7 +184,7 @@ impl PackageRegistry {
 
             let formatted_name = format!(
                 "{} ({}#{})",
-                package.name.clone().color(Color::BrightGreen),
+                package.bin_name.clone().color(Color::BrightGreen),
                 package.clone().full_name('/').color(Color::BrightCyan),
                 pkg.collection.clone().color(Color::BrightRed)
             );
@@ -300,10 +300,6 @@ impl PackageRegistry {
         }
         for resolved_package in packages {
             let package = resolved_package.package.clone();
-            let variant_prefix = package
-                .variant
-                .map(|variant| format!("{}-", variant))
-                .unwrap_or_default();
             let installed_guard = self.installed_packages.lock().await;
             let install_prefix = if installed_guard.is_installed(&resolved_package) {
                 "+"
@@ -311,10 +307,10 @@ impl PackageRegistry {
                 "-"
             };
             println!(
-                "[{0}] [{1}] {2}{3}:{3}-{4} ({5})",
+                "[{0}] [{1}] {2}:{3}-{4} ({5})",
                 install_prefix.color(Color::Red),
                 resolved_package.collection.color(Color::BrightGreen),
-                variant_prefix.color(Color::Blue),
+                package.full_name('/').color(Color::Blue),
                 package.name.color(Color::Blue),
                 package.version.color(Color::Green),
                 package.size.color(Color::Magenta)

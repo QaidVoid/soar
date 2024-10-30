@@ -19,10 +19,10 @@ mod misc;
 mod registry;
 
 pub async fn init() -> Result<()> {
-    config::init();
     let args = Args::parse();
-    let registry = PackageRegistry::new().await?;
+    config::init();
     setup_required_paths().await?;
+    let registry = PackageRegistry::new().await?;
 
     let path_env = env::var("PATH")?;
     if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
@@ -53,13 +53,7 @@ pub async fn init() -> Result<()> {
             let portable_config = portable_config.map(|p| p.unwrap_or_default());
 
             registry
-                .install_packages(
-                    &packages,
-                    force,
-                    portable,
-                    portable_home,
-                    portable_config,
-                )
+                .install_packages(&packages, force, portable, portable_home, portable_config)
                 .await?;
         }
         Commands::Sync => {
