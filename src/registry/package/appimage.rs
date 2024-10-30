@@ -1,7 +1,7 @@
 use std::{
     collections::HashSet,
     fs::File,
-    io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write},
+    io::{BufReader, BufWriter, Read, Seek, Write},
     path::{Path, PathBuf},
 };
 
@@ -13,7 +13,7 @@ use tokio::{fs, try_join};
 use crate::{
     core::{
         color::{Color, ColorExt},
-        constant::{APPIMAGE_MAGIC_BYTES, APPIMAGE_MAGIC_OFFSET, BIN_PATH, PACKAGES_PATH},
+        constant::{BIN_PATH, PACKAGES_PATH},
         util::{download, home_data_path},
     },
     error, info,
@@ -78,16 +78,6 @@ fn normalize_image(image: DynamicImage) -> DynamicImage {
     }
 }
 
-fn is_appimage(file: &mut BufReader<File>) -> bool {
-    if file.seek(SeekFrom::Start(APPIMAGE_MAGIC_OFFSET)).is_ok() {
-        let mut magic_bytes = [0_u8; 4];
-        if file.read_exact(&mut magic_bytes).is_ok() {
-            return APPIMAGE_MAGIC_BYTES == magic_bytes;
-        }
-    }
-    false
-}
-
 async fn create_symlink(from: &Path, to: &Path) -> Result<()> {
     if to.is_symlink() {
         if to.exists() && !to.read_link()?.starts_with(&*PACKAGES_PATH) {
@@ -146,14 +136,12 @@ pub async fn remove_applinks(name: &str, bin_name: &str, file_path: &Path) -> Re
     Ok(())
 }
 
-pub async fn integrate_appimage(package: &Package, file_path: &Path) -> Result<bool> {
-    let mut file = BufReader::new(File::open(file_path)?);
-
-    if !is_appimage(&mut file) {
-        return Ok(false);
-    }
-
-    let offset = find_offset(&mut file).await?;
+pub async fn integrate_appimage(
+    file: &mut BufReader<File>,
+    package: &Package,
+    file_path: &Path,
+) -> Result<bool> {
+    let offset = find_offset(file).await?;
     let squashfs = FilesystemReader::from_reader_with_offset(file, offset)?;
 
     let home_data = home_data_path();
@@ -301,8 +289,7 @@ async fn process_desktop(
     Ok(())
 }
 
-// TODO: use this if the package don't contain the required files
-pub async fn _use_remote_files(package: &Package, file_path: &Path) -> Result<()> {
+pub async fn integrate_using_remote_files(package: &Package, file_path: &Path) -> Result<()> {
     let home_data = home_data_path();
     let data_path = Path::new(&home_data);
 

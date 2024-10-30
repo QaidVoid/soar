@@ -1,4 +1,10 @@
-use std::{fs::Permissions, io::Write, os::unix::fs::PermissionsExt, path::PathBuf, sync::Arc};
+use std::{
+    fs::{File, Permissions},
+    io::{BufReader, Write},
+    os::unix::fs::PermissionsExt,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
@@ -9,6 +15,7 @@ use crate::{
     core::{
         color::{Color, ColorExt},
         constant::{BIN_PATH, PACKAGES_PATH},
+        file::{get_file_type, FileType},
         util::{calculate_checksum, format_bytes, validate_checksum},
     },
     registry::{
@@ -18,7 +25,7 @@ use crate::{
     warn,
 };
 
-use super::ResolvedPackage;
+use super::{appimage::integrate_using_remote_files, ResolvedPackage};
 
 pub struct Installer {
     resolved_package: ResolvedPackage,
@@ -202,16 +209,36 @@ impl Installer {
         self.save_file().await?;
         self.symlink_bin(&installed_packages).await?;
 
-        let ai_integrated = integrate_appimage(package, &self.install_path).await?;
-        if ai_integrated {
-            setup_portable_dir(
-                &package.bin_name,
-                &self.install_path,
-                portable,
-                portable_home,
-                portable_config,
-            )
-            .await?;
+        let mut file = BufReader::new(File::open(&self.install_path)?);
+        let file_type = get_file_type(&mut file);
+
+        match file_type {
+            FileType::AppImage => {
+                if integrate_appimage(&mut file, package, &self.install_path)
+                    .await
+                    .is_ok()
+                {
+                    setup_portable_dir(
+                        &package.bin_name,
+                        &self.install_path,
+                        portable,
+                        portable_home,
+                        portable_config,
+                    )
+                    .await?;
+                } else {
+                    warn!("{}: Failed to integrate AppImage", prefix);
+                };
+            }
+            FileType::FlatImage => {
+                if integrate_using_remote_files(package, &self.install_path)
+                    .await
+                    .is_err()
+                {
+                    warn!("{}: Failed to integrate FlatImage", prefix);
+                };
+            }
+            _ => {}
         }
 
         {
