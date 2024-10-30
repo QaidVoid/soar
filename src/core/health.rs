@@ -47,8 +47,10 @@ pub async fn check_health() {
         Box::pin(check_userns_restrict()),
         Box::pin(check_apparmor_restrict()),
         Box::pin(check_capabilities()),
-        Box::pin(check_fusermount()),
     ];
+
+    println!("{0}  FUSE CHECK {0}", "☵".repeat(4));
+    check_fusermount().await;
 
     let results = join_all(checks).await;
 
@@ -58,17 +60,21 @@ pub async fn check_health() {
         }
     });
 
+    println!();
+
+    println!("{0}  USER NAMESPACE CHECK {0}", "☵".repeat(4));
     for error in &errors {
         warn!("{}", error);
+    }
+
+    if errors.is_empty() {
+        success!("User namespace checked successfully.")
+    } else {
         println!(
             "{} {}",
             "More info at:".color(Color::Cyan),
             "https://l.ajam.dev/namespace".color(Color::Blue)
         )
-    }
-
-    if errors.is_empty() {
-        success!("Everything is in order.")
     }
 }
 
@@ -126,34 +132,40 @@ async fn check_capabilities() -> Option<&'static str> {
     None
 }
 
-async fn check_fusermount() -> Option<&'static str> {
+async fn check_fusermount() {
+    let mut error = String::new();
+
     match which::which("fusermount") {
         Ok(path) => match path.metadata() {
             Ok(meta) => {
                 let permissions = meta.permissions().mode();
                 if permissions != 0o104755 {
-                    return Some(Box::leak(
-                        format!(
-                            "Invalid {} file mode bits. Set 4755 for {}",
-                            "fusermount".color(Color::Blue),
-                            path.to_string_lossy().color(Color::Green)
-                        )
-                        .into_boxed_str(),
-                    ) as &'static str);
+                    error = format!(
+                        "Invalid {} file mode bits. Set 4755 for {}",
+                        "fusermount".color(Color::Blue),
+                        path.to_string_lossy().color(Color::Green)
+                    );
                 }
             }
-            Err(_) => return Some("Unable to read fusermount"),
+            Err(_) => error = "Unable to read fusermount".to_string(),
         },
         Err(_) => {
-            return Some(Box::leak(
-                format!(
-                    "{} not found. Please install {}",
-                    "fusermount".color(Color::Blue),
-                    "fuse".color(Color::Blue)
-                )
-                .into_boxed_str(),
-            ))
+            error = format!(
+                "{} not found. Please install {}",
+                "fusermount".color(Color::Blue),
+                "fuse".color(Color::Blue)
+            );
         }
     }
-    None
+
+    if !error.is_empty() {
+        warn!(
+            "{}\n{} {}",
+            error,
+            "More info at:".color(Color::Cyan),
+            "https://l.ajam.dev/fuse".color(Color::Blue)
+        );
+    } else {
+        success!("Fuse checked successfully.");
+    }
 }
