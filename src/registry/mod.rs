@@ -127,6 +127,7 @@ impl PackageRegistry {
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
+        yes: bool,
     ) -> Result<()> {
         self.storage
             .install_packages(
@@ -136,6 +137,7 @@ impl PackageRegistry {
                 portable,
                 portable_home,
                 portable_config,
+                yes,
             )
             .await
     }
@@ -218,6 +220,7 @@ impl PackageRegistry {
                     "Build Script",
                     package.build_script.clone().color(Color::BrightBlue),
                 ),
+                ("Note", package.note.clone().color(Color::BrightCyan)),
                 (
                     "Category",
                     package.category.clone().color(Color::BrightCyan),
@@ -323,13 +326,13 @@ impl PackageRegistry {
         self.storage.inspect(package_name).await
     }
 
-    pub async fn run(&self, command: &[String]) -> Result<()> {
-        self.storage.run(command).await
+    pub async fn run(&self, command: &[String], yes: bool) -> Result<()> {
+        self.storage.run(command, yes).await
     }
 
     pub async fn use_package(&self, package_name: &str) -> Result<()> {
         let installed_guard = self.installed_packages.lock().await;
-        let resolved_package = self.storage.resolve_package(package_name)?;
+        let resolved_package = self.storage.resolve_package(package_name, false)?;
         let result = installed_guard.use_package(&resolved_package).await;
         drop(installed_guard);
         match result {
@@ -352,6 +355,7 @@ impl PackageRegistry {
                             None,
                             None,
                             None,
+                            false,
                         )
                         .await?;
 

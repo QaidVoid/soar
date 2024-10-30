@@ -58,6 +58,7 @@ impl ResolvedPackage {
         portable_home: Option<String>,
         portable_config: Option<String>,
         multi_progress: Arc<MultiProgress>,
+        yes: bool,
     ) -> Result<()> {
         let install_path = self.package.get_install_path(&self.package.bsum);
         let mut installer = Installer::new(self, install_path);
@@ -71,6 +72,7 @@ impl ResolvedPackage {
                 portable_home,
                 portable_config,
                 multi_progress,
+                yes,
             )
             .await?;
         Ok(())

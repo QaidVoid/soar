@@ -26,6 +26,10 @@ pub enum Commands {
         #[arg(required = false, short, long)]
         force: bool,
 
+        /// Skip all prompts and use first
+        #[arg(required = false, short, long)]
+        yes: bool,
+
         /// Set portable dir for home & config
         #[arg(required = false, short, long, num_args = 0..=1)]
         portable: Option<Option<String>>,
@@ -111,6 +115,10 @@ pub enum Commands {
     #[command(arg_required_else_help = true)]
     #[clap(name = "run", visible_alias = "exec", alias = "execute")]
     Run {
+        /// Skip all prompts and use first
+        #[arg(required = false, short, long)]
+        yes: bool,
+
         /// Command to execute
         #[arg(required = true, trailing_var_arg = true)]
         command: Vec<String>,

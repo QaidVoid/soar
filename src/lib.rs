@@ -42,6 +42,7 @@ pub async fn init() -> Result<()> {
             portable,
             portable_home,
             portable_config,
+            yes,
         } => {
             if portable.is_some() && (portable_home.is_some() || portable_config.is_some()) {
                 error!("--portable cannot be used with --portable-home or --portable-config");
@@ -53,7 +54,14 @@ pub async fn init() -> Result<()> {
             let portable_config = portable_config.map(|p| p.unwrap_or_default());
 
             registry
-                .install_packages(&packages, force, portable, portable_home, portable_config)
+                .install_packages(
+                    &packages,
+                    force,
+                    portable,
+                    portable_home,
+                    portable_config,
+                    yes,
+                )
                 .await?;
         }
         Commands::Sync => {
@@ -84,8 +92,8 @@ pub async fn init() -> Result<()> {
         Commands::Inspect { package } => {
             registry.inspect(&package).await?;
         }
-        Commands::Run { command } => {
-            registry.run(command.as_ref()).await?;
+        Commands::Run { command, yes } => {
+            registry.run(command.as_ref(), yes).await?;
         }
         Commands::Use { package } => {
             registry.use_package(&package).await?;

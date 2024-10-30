@@ -11,7 +11,6 @@ use crate::{
         constant::{BIN_PATH, PACKAGES_PATH},
         util::{calculate_checksum, format_bytes, validate_checksum},
     },
-    error,
     registry::{
         installed::InstalledPackages,
         package::appimage::{integrate_appimage, setup_portable_dir},
@@ -50,6 +49,7 @@ impl Installer {
         portable_home: Option<String>,
         portable_config: Option<String>,
         multi_progress: Arc<MultiProgress>,
+        yes: bool,
     ) -> Result<()> {
         let package = &self.resolved_package.package;
         let is_installed = installed_packages
@@ -162,25 +162,29 @@ impl Installer {
         download_progress.finish();
 
         if package.bsum == "null" {
-            error!(
+            warn!(
                 "Missing checksum for {}. Installing anyway.",
                 package.full_name('/').color(Color::BrightBlue)
             );
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
             if result.is_err() {
-                eprint!(
-                    "\n{}: Checksum verification failed. Do you want to remove the package? (y/n): ",
-                    prefix
-                );
-                std::io::stdout().flush()?;
+                if yes {
+                    warn!("Checksum verification failed. Installing anyway.");
+                } else {
+                    eprint!(
+                        "\n{}: Checksum verification failed. Do you want to remove the package? (y/n): ",
+                        prefix
+                    );
+                    std::io::stdout().flush()?;
 
-                let mut response = String::new();
-                std::io::stdin().read_line(&mut response)?;
+                    let mut response = String::new();
+                    std::io::stdin().read_line(&mut response)?;
 
-                if response.trim().eq_ignore_ascii_case("y") {
-                    tokio::fs::remove_file(&temp_path).await?;
-                    return Err(anyhow::anyhow!("Checksum verification failed."));
+                    if response.trim().eq_ignore_ascii_case("y") {
+                        tokio::fs::remove_file(&temp_path).await?;
+                        return Err(anyhow::anyhow!("Checksum verification failed."));
+                    }
                 }
             }
         }

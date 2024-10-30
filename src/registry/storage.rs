@@ -58,7 +58,7 @@ impl PackageStorage {
         self.repository.insert(repo_name.to_owned(), packages);
     }
 
-    pub fn resolve_package(&self, package_name: &str) -> Result<ResolvedPackage> {
+    pub fn resolve_package(&self, package_name: &str, yes: bool) -> Result<ResolvedPackage> {
         let pkg_query = parse_package_query(package_name);
         let packages = self
             .get_packages(&pkg_query)
@@ -69,12 +69,14 @@ impl PackageStorage {
                     "Is it a fish? Is is a frog? On no, it's a fly."
                 ));
             }
-            1 => &ResolvedPackage {
-                repo_name: packages[0].repo_name.to_owned(),
-                package: packages[0].package.to_owned(),
-                collection: packages[0].collection.to_owned(),
-            },
-            _ => select_package_variant(&packages)?,
+            1 => &packages[0],
+            _ => {
+                if yes {
+                    &packages[0]
+                } else {
+                    select_package_variant(&packages)?
+                }
+            }
         };
 
         Ok(package.to_owned())
@@ -88,10 +90,11 @@ impl PackageStorage {
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
+        yes: bool,
     ) -> Result<()> {
         let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
             .iter()
-            .map(|package_name| self.resolve_package(package_name))
+            .map(|package_name| self.resolve_package(package_name, yes))
             .collect();
         let resolved_packages = resolved_packages?;
 
@@ -162,6 +165,7 @@ impl PackageStorage {
                             portable_home,
                             portable_config,
                             multi_progress,
+                            yes,
                         )
                         .await
                     {
@@ -191,6 +195,7 @@ impl PackageStorage {
                         portable_home.clone(),
                         portable_config.clone(),
                         multi_progress.clone(),
+                        yes,
                     )
                     .await
                 {
@@ -214,7 +219,7 @@ impl PackageStorage {
     pub async fn remove_packages(&self, package_names: &[String]) -> Result<()> {
         let resolved_packages: Vec<ResolvedPackage> = package_names
             .iter()
-            .filter_map(|package_name| self.resolve_package(package_name).ok())
+            .filter_map(|package_name| self.resolve_package(package_name, false).ok())
             .collect();
         for package in resolved_packages {
             package.remove().await?;
@@ -357,7 +362,7 @@ impl PackageStorage {
     }
 
     pub async fn inspect(&self, package_name: &str) -> Result<()> {
-        let resolved_pkg = self.resolve_package(package_name)?;
+        let resolved_pkg = self.resolve_package(package_name, false)?;
 
         let client = reqwest::Client::new();
         let url = resolved_pkg.package.build_log;
@@ -408,7 +413,7 @@ impl PackageStorage {
         Ok(())
     }
 
-    pub async fn run(&self, command: &[String]) -> Result<()> {
+    pub async fn run(&self, command: &[String], yes: bool) -> Result<()> {
         fs::create_dir_all(&*CACHE_PATH).await?;
 
         let package_name = &command[0];
@@ -417,7 +422,7 @@ impl PackageStorage {
         } else {
             &[]
         };
-        let runner = if let Ok(resolved_pkg) = self.resolve_package(package_name) {
+        let runner = if let Ok(resolved_pkg) = self.resolve_package(package_name, yes) {
             let package_path = CACHE_PATH.join(&resolved_pkg.package.bin_name);
             Runner::new(&resolved_pkg, package_path, args)
         } else {

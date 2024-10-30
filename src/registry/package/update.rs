@@ -33,7 +33,7 @@ impl Updater {
             Some(r) => {
                 let resolved_packages: Result<Vec<ResolvedPackage>> = r
                     .iter()
-                    .map(|package_name| registry.storage.resolve_package(package_name))
+                    .map(|package_name| registry.storage.resolve_package(package_name, true))
                     .collect();
                 resolved_packages?
             }
@@ -89,6 +89,7 @@ impl Updater {
                         None,
                         None,
                         multi_progress.clone(),
+                        true,
                     )
                     .await?;
                 update_count += 1;
