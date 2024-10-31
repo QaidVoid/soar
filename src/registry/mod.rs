@@ -283,9 +283,8 @@ impl PackageRegistry {
     }
 
     pub async fn update(&self, package_names: Option<&[String]>) -> Result<()> {
-        let mut installed_guard = self.installed_packages.lock().await;
         let updater = Updater::new(package_names);
-        updater.execute(self, &mut installed_guard).await
+        updater.execute(self).await
     }
 
     pub async fn info(&self, package_names: Option<&[String]>) -> Result<()> {

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -21,6 +21,7 @@ pub struct InstalledPackage {
     pub repo_name: String,
     pub collection: String,
     pub name: String,
+    pub variant: Option<String>,
     pub bin_name: String,
     pub version: String,
     pub checksum: String,
@@ -61,26 +62,22 @@ impl InstalledPackages {
     }
 
     pub fn is_installed(&self, package: &ResolvedPackage) -> bool {
-        self.packages.iter().any(|installed| {
-            installed.repo_name == package.repo_name
-                && installed.collection == package.collection
-                && installed.name == package.package.full_name('-')
-        })
+        self.packages
+            .iter()
+            .any(|installed| installed.full_name('-') == package.package.full_name('-'))
     }
 
     fn find_package_mut(&mut self, package: &ResolvedPackage) -> Option<&mut InstalledPackage> {
-        self.packages.iter_mut().find(|installed| {
-            installed.repo_name == package.repo_name
-                && installed.collection == package.collection
-                && installed.name == package.package.full_name('-')
-        })
+        self.packages
+            .iter_mut()
+            .find(|installed| installed.full_name('-') == package.package.full_name('-'))
     }
 
     pub fn find_package(&self, package: &ResolvedPackage) -> Option<&InstalledPackage> {
         self.packages.iter().find(|installed| {
             installed.repo_name == package.repo_name
                 && installed.collection == package.collection
-                && installed.name == package.package.full_name('-')
+                && installed.full_name('-') == package.package.full_name('-')
         })
     }
 
@@ -90,20 +87,22 @@ impl InstalledPackages {
         checksum: &str,
     ) -> Result<()> {
         let package = resolved_package.package.to_owned();
+
+        let new_installed = InstalledPackage {
+            repo_name: resolved_package.repo_name.to_owned(),
+            collection: resolved_package.collection.to_string().to_owned(),
+            name: package.name,
+            variant: package.variant,
+            bin_name: package.bin_name,
+            version: package.version,
+            checksum: checksum.to_owned(),
+            size: parse_size(&package.size).unwrap_or_default(),
+            timestamp: Utc::now(),
+        };
+
         if let Some(installed) = self.find_package_mut(resolved_package) {
-            installed.version = package.version.clone();
-            installed.checksum = package.bsum.clone();
+            *installed = new_installed;
         } else {
-            let new_installed = InstalledPackage {
-                repo_name: resolved_package.repo_name.to_owned(),
-                collection: resolved_package.collection.to_string().to_owned(),
-                name: package.full_name('-'),
-                bin_name: package.bin_name,
-                version: package.version,
-                checksum: checksum.to_owned(),
-                size: parse_size(&package.size).unwrap_or_default(),
-                timestamp: Utc::now(),
-            };
             self.packages.push(new_installed);
         }
 
@@ -116,9 +115,7 @@ impl InstalledPackages {
         match self.is_installed(resolved_package) {
             true => {
                 self.packages.retain(|installed| {
-                    !(installed.repo_name == resolved_package.repo_name
-                        && installed.collection == resolved_package.collection
-                        && installed.name == resolved_package.package.full_name('-'))
+                    installed.full_name('-') != resolved_package.package.full_name('-')
                 });
             }
             false => {
@@ -221,19 +218,6 @@ impl InstalledPackages {
         Ok(())
     }
 
-    pub fn reverse_package_search(&self, path: &Path) -> Option<InstalledPackage> {
-        let path_str = path.to_string_lossy();
-        if path_str.len() > 64 {
-            let checksum = &path_str[..64];
-            self.packages
-                .iter()
-                .find(|package| package.checksum == checksum)
-                .cloned()
-        } else {
-            None
-        }
-    }
-
     pub async fn use_package(&self, resolved_package: &ResolvedPackage) -> Result<()> {
         if let Some(installed) = self.find_package(resolved_package) {
             let install_path = resolved_package
@@ -263,5 +247,16 @@ impl InstalledPackages {
         }
 
         Ok(())
+    }
+}
+
+impl InstalledPackage {
+    pub fn full_name(&self, join_char: char) -> String {
+        let variant_prefix = self
+            .variant
+            .to_owned()
+            .map(|variant| format!("{}{}", variant, join_char))
+            .unwrap_or_default();
+        format!("{}{}", variant_prefix, self.name)
     }
 }

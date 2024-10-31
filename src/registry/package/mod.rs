@@ -60,7 +60,7 @@ impl ResolvedPackage {
         multi_progress: Arc<MultiProgress>,
         yes: bool,
     ) -> Result<()> {
-        let install_path = self.package.get_install_path(&self.package.bsum);
+        let install_path = self.package.get_install_path(&self.package.bsum[..8]);
         let mut installer = Installer::new(self, install_path);
         installer
             .execute(
@@ -88,7 +88,7 @@ impl ResolvedPackage {
 
 impl Package {
     pub fn get_install_dir(&self, checksum: &str) -> PathBuf {
-        PACKAGES_PATH.join(format!("{}-{}", checksum, self.full_name('-')))
+        PACKAGES_PATH.join(format!("{}-{}", &checksum[..8], self.full_name('-')))
     }
 
     pub fn get_install_path(&self, checksum: &str) -> PathBuf {

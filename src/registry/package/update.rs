@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use indicatif::MultiProgress;
-use tokio::sync::MutexGuard;
 
 use crate::{
     core::color::{Color, ColorExt},
     error,
-    registry::{installed::InstalledPackages, PackageRegistry},
+    registry::PackageRegistry,
     success,
 };
 
@@ -24,11 +23,8 @@ impl Updater {
         }
     }
 
-    pub async fn execute(
-        &self,
-        registry: &PackageRegistry,
-        installed_packages: &mut MutexGuard<'_, InstalledPackages>,
-    ) -> Result<()> {
+    pub async fn execute(&self, registry: &PackageRegistry) -> Result<()> {
+        let installed_guard = registry.installed_packages.lock().await;
         let packages = match &self.package_names {
             Some(r) => {
                 let resolved_packages: Result<Vec<ResolvedPackage>> = r
@@ -37,7 +33,7 @@ impl Updater {
                     .collect();
                 resolved_packages?
             }
-            None => installed_packages
+            None => installed_guard
                 .packages
                 .iter()
                 .filter_map(|installed| {
@@ -58,11 +54,11 @@ impl Updater {
 
         let multi_progress = Arc::new(MultiProgress::new());
         for package in packages {
-            if let Some(installed_package) = installed_packages.packages.iter().find(|installed| {
-                installed.repo_name == package.repo_name
-                    && installed.name == package.package.full_name('/')
-                    && installed.collection == package.collection
-            }) {
+            if let Some(installed_package) = installed_guard
+                .packages
+                .iter()
+                .find(|installed| installed.full_name('-') == package.package.full_name('-'))
+            {
                 if installed_package.checksum != package.package.bsum {
                     packages_to_update.push(package);
                 }
@@ -73,6 +69,8 @@ impl Updater {
                 );
             }
         }
+
+        drop(installed_guard);
 
         if packages_to_update.is_empty() {
             error!("No updates available");

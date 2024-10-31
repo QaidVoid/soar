@@ -207,7 +207,7 @@ impl Installer {
         }
 
         self.save_file().await?;
-        self.symlink_bin(&installed_packages).await?;
+        self.symlink_bin().await?;
 
         let mut file = BufReader::new(File::open(&self.install_path)?);
         let file_type = get_file_type(&mut file);
@@ -290,21 +290,23 @@ impl Installer {
         Ok(())
     }
 
-    async fn symlink_bin(&self, installed_packages: &Arc<Mutex<InstalledPackages>>) -> Result<()> {
+    async fn symlink_bin(&self) -> Result<()> {
         let package = &self.resolved_package.package;
         let install_path = &self.install_path;
         let symlink_path = &BIN_PATH.join(&package.bin_name);
-        let installed_guard = installed_packages.lock().await;
         if symlink_path.exists() {
             if let Ok(link) = symlink_path.read_link() {
                 if &link != install_path {
-                    if let Some(path_owner) =
-                        installed_guard.reverse_package_search(link.strip_prefix(&*PACKAGES_PATH)?)
-                    {
-                        if path_owner.name != package.full_name('-') {
+                    if let Ok(parent) = link.strip_prefix(&*PACKAGES_PATH) {
+                        let package_name =
+                            parent.parent().unwrap().to_string_lossy()[9..].replacen("-", "/", 1);
+
+                        if package_name == package.full_name('-') {
+                            fs::remove_dir_all(link.parent().unwrap()).await?;
+                        } else {
                             warn!(
                                 "The package {} owns the binary {}",
-                                path_owner.name, &package.bin_name
+                                package_name, &package.bin_name
                             );
                             print!(
                                 "Do you want to switch to {} (y/N)? ",
@@ -319,7 +321,7 @@ impl Installer {
                                 return Ok(());
                             }
                         }
-                    }
+                    };
                 }
             }
             fs::remove_file(symlink_path).await?;
