@@ -5,8 +5,9 @@
 set -eu
 
 main() {
-    DEFAULT_VERSION="0.3.1"
+    DEFAULT_VERSION="latest"
     SOAR_VERSION="${SOAR_VERSION:-$DEFAULT_VERSION}"
+
     # Function to check for curl or wget
     check_download_tool() {
         if command -v curl >/dev/null 2>&1; then
@@ -49,10 +50,27 @@ main() {
             return
         fi
 
+        # Fallback to /usr/local/bin if running as root
+        if [ "$(id -u)" = "0" ]; then
+            if [ -d "/usr/local/bin" ] && [ -w "/usr/local/bin" ]; then
+                printf "/usr/local/bin"
+                return
+            fi
+        fi
+
         # Fallback to current directory
-        echo "Notice: ~/.local/bin not found or not writable. Installing in current directory."
-        echo "You should move the binary to a location in your $PATH."
+        echo "Notice: ~/.local/bin not found or not writable. Installing in current directory." >&2
+        echo "You should move the binary to a location in your \$PATH." >&2
         printf "%s" "$(pwd)"
+    }
+
+    get_latest_version() {
+        latest_version=$($DOWNLOAD_TOOL "https://api.github.com/repos/QaidVoid/soar/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+        if [ -z "$latest_version" ]; then
+            echo "Error: Could not determine latest version"
+            exit 1
+        fi
+        printf "%s" "$latest_version"
     }
 
     # Function to download and install
@@ -77,7 +95,14 @@ main() {
 
         # Get latest release URL
         echo "Downloading Soar..."
-        RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/v$SOAR_VERSION/soar-$SOAR_VERSION-$ARCH-linux"
+        if [[ "$SOAR_VERSION" == *"nightly"* ]]; then
+            RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/nightly/soar-nightly-$ARCH-linux"
+        elif [[ "$SOAR_VERSION" == *"latest"* ]]; then
+            SOAR_VERSION=$(get_latest_version)
+            RELEASE_URL="https://github.com/QaidVoid/soar/releases/latest/download/soar-$SOAR_VERSION-$ARCH-linux"
+        else
+            RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/v$SOAR_VERSION/soar-$SOAR_VERSION-$ARCH-linux"
+        fi
         echo $RELEASE_URL
 
         # Download and install

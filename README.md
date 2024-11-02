@@ -51,6 +51,26 @@ A fast, modern package manager for Linux systems.
 ```sh
 curl -qfsSL "https://soar.qaidvoid.dev/install.sh" | sh
 ```
+The install script supports several environment variables to customize the installation:
+
+- `SOAR_VERSION`: Specify the version to install
+  ```sh
+  # Install specific version
+  SOAR_VERSION=0.4.0 curl -qfsSL "https://soar.qaidvoid.dev/install.sh" | sh
+
+  # Install latest release
+  SOAR_VERSION=latest curl -qfsSL "https://soar.qaidvoid.dev/install.sh" | sh
+
+  # Install nightly build
+  SOAR_VERSION=nightly curl -qfsSL "https://soar.qaidvoid.dev/install.sh" | sh
+  ```
+
+- `SOAR_INSTALL_DIR`: Specify custom installation directory
+  ```sh
+  SOAR_INSTALL_DIR=~/.bin curl -qfsSL "https://soar.qaidvoid.dev/install.sh" | sh
+  ```
+
+> **Note**: If no installation directory is specified, the script will attempt to install in `~/.local/bin`. If that's not available, it will install in the current directory.
 
 ### From Source
 
