@@ -18,8 +18,7 @@ jobs:
 
       - name: Remove existing nightly tag
         run: |
-          git tag -d nightly || true
-          git push origin :refs/tags/nightly || true
+          gh release delete nightly --cleanup-tag || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   publish-nightly:

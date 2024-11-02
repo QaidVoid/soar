@@ -140,6 +140,10 @@ pub enum Commands {
         /// Links to files
         #[arg(required = true)]
         links: Vec<String>,
+
+        /// Skip all prompts and use first
+        #[arg(required = false, short, long)]
+        yes: bool,
     },
 
     /// Health check

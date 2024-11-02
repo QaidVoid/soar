@@ -15,7 +15,10 @@ use crate::{
         constant::ELF_MAGIC_BYTES,
         util::format_bytes,
     },
-    error, success,
+    error,
+    package::parse_package_query,
+    registry::{select_single_package, PackageRegistry},
+    success,
 };
 
 fn extract_filename(url: &str) -> String {
@@ -88,12 +91,31 @@ async fn download(url: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn download_and_save(links: &[String]) -> Result<()> {
+pub async fn download_and_save(
+    registry: PackageRegistry,
+    links: &[String],
+    yes: bool,
+) -> Result<()> {
     for link in links {
         if let Ok(url) = Url::parse(link) {
             download(url.as_str()).await?;
         } else {
             error!("{} is not a valid URL", link.color(Color::Blue));
+            println!("Searching for package instead..");
+
+            let query = parse_package_query(link);
+            let packages = registry.storage.get_packages(&query);
+
+            if let Some(packages) = packages {
+                let resolved_pkg = if yes || packages.len() == 1 {
+                    &packages[0]
+                } else {
+                    select_single_package(&packages)?
+                };
+                download(&resolved_pkg.package.download_url).await?;
+            } else {
+                error!("No packages found.");
+            }
         };
     }
 
