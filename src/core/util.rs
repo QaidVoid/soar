@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
+use indicatif::{ProgressState, ProgressStyle};
 use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
 use termion::cursor;
 use tokio::{
@@ -306,4 +307,44 @@ pub fn get_terminal_width() -> usize {
     } else {
         80
     }
+}
+
+pub fn download_progress_style(with_msg: bool) -> ProgressStyle {
+    let style = if with_msg {
+        ProgressStyle::with_template(
+            "{msg:32!} [{wide_bar:.green/white}] {speed:14} {computed_bytes:22}",
+        )
+        .unwrap()
+    } else {
+        ProgressStyle::with_template("[{wide_bar:.green/white}] {speed:14} {computed_bytes:22}")
+            .unwrap()
+    };
+
+    style
+        .with_key(
+            "computed_bytes",
+            |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                write!(
+                    w,
+                    "{}/{}",
+                    format_bytes(state.pos()),
+                    format_bytes(state.len().unwrap_or_default())
+                )
+                .unwrap()
+            },
+        )
+        .with_key(
+            "speed",
+            |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                let pos = state.pos() as f64;
+                let elapsed = state.elapsed().as_secs_f64();
+                let speed = if elapsed > 0.0 {
+                    (pos / elapsed) as u64
+                } else {
+                    0
+                };
+                write!(w, "{}/s", format_bytes(speed)).unwrap()
+            },
+        )
+        .progress_chars("━━")
 }

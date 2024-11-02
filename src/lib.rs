@@ -99,8 +99,8 @@ pub async fn init() -> Result<()> {
         Commands::Use { package } => {
             registry.use_package(&package).await?;
         }
-        Commands::Download { links, yes } => {
-            download_and_save(registry, links.as_ref(), yes).await?;
+        Commands::Download { links, yes, output } => {
+            download_and_save(registry, links.as_ref(), yes, output).await?;
         }
         Commands::Health => {
             check_health().await;

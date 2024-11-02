@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use tokio::{fs, io::AsyncWriteExt, sync::Mutex};
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
         color::{Color, ColorExt},
         constant::{BIN_PATH, PACKAGES_PATH},
         file::{get_file_type, FileType},
-        util::{calculate_checksum, format_bytes, validate_checksum},
+        util::{calculate_checksum, download_progress_style, validate_checksum},
     },
     registry::installed::InstalledPackages,
     warn,
@@ -95,38 +95,7 @@ impl Installer {
             .unwrap_or(0);
 
         let download_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
-        download_progress.set_style(
-            ProgressStyle::with_template(
-                "{msg:48} [{wide_bar:.green/white}] {speed:14} {computed_bytes:22}",
-            )
-            .unwrap()
-            .with_key(
-                "computed_bytes",
-                |state: &ProgressState, w: &mut dyn std::fmt::Write| {
-                    write!(
-                        w,
-                        "{}/{}",
-                        format_bytes(state.pos()),
-                        format_bytes(state.len().unwrap_or_default())
-                    )
-                    .unwrap()
-                },
-            )
-            .with_key(
-                "speed",
-                |state: &ProgressState, w: &mut dyn std::fmt::Write| {
-                    let pos = state.pos() as f64;
-                    let elapsed = state.elapsed().as_secs_f64();
-                    let speed = if elapsed > 0.0 {
-                        (pos / elapsed) as u64
-                    } else {
-                        0
-                    };
-                    write!(w, "{}/s", format_bytes(speed)).unwrap()
-                },
-            )
-            .progress_chars("━━"),
-        );
+        download_progress.set_style(download_progress_style(true));
 
         download_progress.set_length(total_size);
         download_progress.set_message(prefix.clone());

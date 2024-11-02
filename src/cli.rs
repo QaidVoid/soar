@@ -144,6 +144,10 @@ pub enum Commands {
         /// Skip all prompts and use first
         #[arg(required = false, short, long)]
         yes: bool,
+
+        /// Output file path
+        #[arg(required = false, short, long)]
+        output: Option<String>,
     },
 
     /// Health check
