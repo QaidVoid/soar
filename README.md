@@ -8,17 +8,49 @@ A fast, modern package manager for Linux systems.
 
 > **Note**: Soar is currently under rapid development.
 
-## 🌟 Features
+## 🎯 Why Choose Soar?
 
+- **Universal Package Support**: Unlike traditional package managers, Soar handles multiple package formats:
+  - Binary packages
+  - AppImages with automatic integration
+  - FlatImages with desktop environment integration
+  - More formats planned for future releases
+
+- **Seamless Desktop Integration**: 
+  - Automatic desktop entry creation
+  - Icon integration across different resolutions
+  - Smart symlink management
+  - Portable home/config directory support for AppImages
+
+## 🌟 Key Features
+
+### Package Management
 - **⚡ Lightning-Fast**: Parallel downloads and installations for maximum speed
-- **🧰 Comprehensive Management**: Easily install, remove, update, and list packages
+- **🧰 Comprehensive Management**: Easy install, remove, update, and list operations
 - **🌐 Multi-Repository Support**: Configure and use multiple package repositories
-- **🔍 Smart Search**: Quickly find the packages you need
+- **🔍 Smart Search**: Quickly find packages
 - **🔄 Effortless Updates**: Keep your system up-to-date with a single command
-- **📊 Detailed Information**: Get in-depth info about installed packages
+
+### Advanced Features
 - **🏃‍♂️ Run Without Install**: Try packages without permanent installation
+- **📊 Detailed Information**: Get in-depth package info with image previews
+- **🖼️ Image Support**: 
+  - Sixel graphics protocol support
+  - Kitty graphics protocol integration
+  - HalfBlock image rendering
+
+### Desktop Integration
+- **🖥️ Automatic Desktop Entries**: Seamless integration with desktop environments
+- **🎨 Icon Management**: Automatic icon scaling and integration
+- **📁 Portable Configurations**: Support for portable home and config directories
+- **🔗 Smart Symlink Handling**: Intelligent binary path management
 
 ## 🔧 Installation
+
+### Using install script
+```sh
+curl -qfsSL "https://soar.qaidvoid.dev/install.sh" | sh
+```
 
 ### From Source
 
@@ -116,6 +148,11 @@ You can customize these settings to fit you
 We welcome contributions! Please feel free to fork the repository and submit
 pull requests. If you have suggestions or feature requests, open an issue to
 discuss.
+
+Please feel free to:
+1. Fork the repository
+2. Create your feature branch
+3. Submit a pull request
 
 ## 📝 License
 

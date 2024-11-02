@@ -21,6 +21,7 @@ mod registry;
 
 pub async fn init() -> Result<()> {
     let args = Args::parse();
+
     config::init();
     setup_required_paths().await?;
     let registry = PackageRegistry::new().await?;

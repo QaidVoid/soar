@@ -1,8 +1,17 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(author, version)]
-#[command(arg_required_else_help = true)]
+#[command(
+    author,
+    version,
+    about,
+    help_template = "{before-help}{name} {version}
+{author-with-newline}{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}",
+    arg_required_else_help = true
+)]
 pub struct Args {
     /// Unimplemented
     #[arg(short, long)]
