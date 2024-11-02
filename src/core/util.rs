@@ -14,7 +14,7 @@ use tokio::{
 
 use super::{
     color::{Color, ColorExt},
-    constant::{BIN_PATH, CACHE_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH},
+    constant::{BIN_PATH, CACHE_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH, REGISTRY_PATH},
 };
 
 pub fn home_path() -> String {
@@ -138,6 +138,15 @@ pub async fn setup_required_paths() -> Result<()> {
             format!(
                 "Failed to create bin directory {}",
                 BIN_PATH.to_string_lossy().color(Color::Blue)
+            )
+        })?;
+    }
+
+    if !REGISTRY_PATH.exists() {
+        fs::create_dir_all(&*REGISTRY_PATH).await.with_context(|| {
+            format!(
+                "Failed to create registry directory: {}",
+                REGISTRY_PATH.display().color(Color::Blue)
             )
         })?;
     }

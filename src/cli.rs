@@ -74,7 +74,7 @@ pub enum Commands {
         packages: Vec<String>,
     },
 
-    /// Sync with remote registry
+    /// Sync with remote metadata
     #[clap(name = "sync", visible_alias = "S", alias = "fetch")]
     Sync,
 
@@ -124,7 +124,7 @@ pub enum Commands {
         command: Vec<String>,
     },
 
-    /// Use different variant of a package
+    /// Use package from different family
     #[command(arg_required_else_help = true)]
     #[clap(name = "use")]
     Use {

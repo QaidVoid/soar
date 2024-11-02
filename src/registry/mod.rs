@@ -1,14 +1,10 @@
 use std::{io::Write, sync::Arc};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
-use fetcher::RegistryFetcher;
-use futures::future::try_join_all;
+use fetcher::MetadataFetcher;
 use installed::InstalledPackages;
-use loader::RegistryLoader;
-use package::{
-    image::get_package_image_string, parse_package_query, update::Updater, ResolvedPackage,
-};
+use loader::MetadataLoader;
 use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use termion::cursor;
@@ -18,43 +14,43 @@ use crate::{
     core::{
         color::{Color, ColorExt},
         config::CONFIG,
-        constant::REGISTRY_PATH,
-        util::{download, get_terminal_width, wrap_text},
+        util::{get_terminal_width, wrap_text},
     },
-    error, info, success,
+    error, info,
+    package::{
+        image::get_package_image_string, parse_package_query, update::Updater, ResolvedPackage,
+    },
+    success,
 };
 
 mod fetcher;
 pub mod installed;
 mod loader;
-pub mod package;
 mod storage;
 
 pub struct PackageRegistry {
-    fetcher: RegistryFetcher,
     pub storage: PackageStorage,
     pub installed_packages: Arc<Mutex<InstalledPackages>>,
 }
 
 impl PackageRegistry {
     pub async fn new() -> Result<Self> {
-        let loader = RegistryLoader::new();
-        let fetcher = RegistryFetcher::new();
+        let loader = MetadataLoader::new();
+        let fetcher = MetadataFetcher::new();
         let mut storage = PackageStorage::new();
         let installed_packages = Arc::new(Mutex::new(InstalledPackages::new().await?));
 
         Self::load_or_fetch_packages(&loader, &fetcher, &mut storage).await?;
 
         Ok(Self {
-            fetcher,
             storage,
             installed_packages,
         })
     }
 
     pub async fn load_or_fetch_packages(
-        loader: &RegistryLoader,
-        fetcher: &RegistryFetcher,
+        loader: &MetadataLoader,
+        fetcher: &MetadataFetcher,
         storage: &mut PackageStorage,
     ) -> Result<()> {
         for repo in &CONFIG.repositories {
@@ -62,6 +58,12 @@ impl PackageRegistry {
             let content = if path.exists() {
                 loader.execute(repo, fetcher).await?
             } else {
+                let checksum = fetcher.checksum(repo).await?;
+                let checksum_path = repo
+                    .get_path()
+                    .with_file_name(format!("{}.remote.bsum", repo.name));
+                fs::write(checksum_path, &checksum).await?;
+
                 fetcher.execute(repo).await?
             };
 
@@ -69,52 +71,13 @@ impl PackageRegistry {
             let packages = match RepositoryPackages::deserialize(&mut de) {
                 Ok(packages) => packages,
                 Err(_) => {
-                    error!("Registry is invalid. Refetching...");
+                    error!("Metadata is invalid. Refetching...");
                     let content = fetcher.execute(repo).await?;
                     let mut de = rmp_serde::Deserializer::new(&content[..]);
                     RepositoryPackages::deserialize(&mut de)?
                 }
             };
             storage.add_repository(&repo.name, packages);
-        }
-
-        Ok(())
-    }
-
-    pub async fn fetch(&mut self) -> Result<()> {
-        for repo in &CONFIG.repositories {
-            let content = self.fetcher.execute(repo).await?;
-
-            let mut de = rmp_serde::Deserializer::new(&content[..]);
-            let packages = RepositoryPackages::deserialize(&mut de)?;
-
-            self.storage.add_repository(&repo.name, packages);
-
-            // fetch default icons
-            let icon_futures: Vec<_> = repo
-                .sources
-                .iter()
-                .map(|(key, base_url)| {
-                    let base_url = format!("{}/{}.default.png", base_url, key);
-                    async move { download(&base_url, "icon", true).await }
-                })
-                .collect();
-            let icons = try_join_all(icon_futures).await?;
-
-            for (key, icon) in repo.sources.keys().zip(icons) {
-                let icon_path = REGISTRY_PATH
-                    .join("icons")
-                    .join(format!("{}-{}.png", repo.name, key));
-
-                if let Some(parent) = icon_path.parent() {
-                    fs::create_dir_all(parent).await.context(anyhow::anyhow!(
-                        "Failed to create icon directory at {}",
-                        parent.to_string_lossy().color(Color::Blue)
-                    ))?;
-                }
-
-                fs::write(icon_path, icon).await?;
-            }
         }
 
         Ok(())
@@ -367,7 +330,7 @@ impl PackageRegistry {
     }
 }
 
-pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
+pub fn select_single_package(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
     info!(
         "Multiple packages available for {}",
         packages[0].package.name.clone().color(Color::Blue)
@@ -383,7 +346,7 @@ pub fn select_package_variant(packages: &[ResolvedPackage]) -> Result<&ResolvedP
     }
 
     let selection = loop {
-        print!("Select a variant (1-{}): ", packages.len());
+        print!("Select a package (1-{}): ", packages.len());
         std::io::stdout().flush()?;
 
         let mut input = String::new();

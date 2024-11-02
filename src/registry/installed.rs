@@ -11,17 +11,17 @@ use crate::{
         constant::{BIN_PATH, INSTALL_TRACK_PATH},
         util::{format_bytes, parse_size},
     },
-    registry::package::parse_package_query,
+    package::{parse_package_query, ResolvedPackage},
 };
 
-use super::{package::ResolvedPackage, storage::PackageStorage};
+use super::storage::PackageStorage;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InstalledPackage {
     pub repo_name: String,
     pub collection: String,
     pub name: String,
-    pub variant: Option<String>,
+    pub family: Option<String>,
     pub bin_name: String,
     pub version: String,
     pub checksum: String,
@@ -92,7 +92,7 @@ impl InstalledPackages {
             repo_name: resolved_package.repo_name.to_owned(),
             collection: resolved_package.collection.to_string().to_owned(),
             name: package.name,
-            variant: package.variant,
+            family: package.family,
             bin_name: package.bin_name,
             version: package.version,
             checksum: checksum.to_owned(),
@@ -252,11 +252,11 @@ impl InstalledPackages {
 
 impl InstalledPackage {
     pub fn full_name(&self, join_char: char) -> String {
-        let variant_prefix = self
-            .variant
+        let family_prefix = self
+            .family
             .to_owned()
-            .map(|variant| format!("{}{}", variant, join_char))
+            .map(|family| format!("{}{}", family, join_char))
             .unwrap_or_default();
-        format!("{}{}", variant_prefix, self.name)
+        format!("{}{}", family_prefix, self.name)
     }
 }

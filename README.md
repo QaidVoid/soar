@@ -49,13 +49,13 @@ Commands:
   search    Search package [aliases: s]
   query     Query package info [aliases: Q]
   remove    Remove packages [aliases: r]
-  sync      Sync with remote registry [aliases: S]
+  sync      Sync with remote metadata [aliases: S]
   update    Update packages [aliases: u]
   info      Show info about installed packages
   list      List all available packages
   inspect   Inspect package build log
   run       Run packages without installing to PATH [aliases: exec]
-  use       Use different variant of a package
+  use       Use package from different family
   download  Download arbitrary files [aliases: dl]
   health    Health check
   help      Print this message or the help of the given subcommand(s)
@@ -78,7 +78,7 @@ Default configuration
     {
       "name": "ajam",
       "url": "https://bin.ajam.dev/x86_64",
-      "registry": "METADATA.AIO.json",
+      "metadata": "METADATA.AIO.json",
       "sources": {
         "bin": "https://bin.ajam.dev/x86_64",
         "pkg": "https://pkg.ajam.dev/x86_64",
@@ -98,7 +98,7 @@ Default configuration
 - `repositories`: Array of package repositories Soar will use to fetch packages.
   - `name`: A unique name for the repository.
   - `url`: The main URL of the repository.
-  - `registry`: The filename of the registry metadata file.
+  - `metadata`: The remote metadata filename.
   - `sources`: Specific URLs for different types of content within the repository.
     - `bin`: URL for downloading binary files.
     - `pkg`: URL for downloading package files.

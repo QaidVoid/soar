@@ -31,9 +31,9 @@ pub struct Repository {
     /// URL of the repository.
     pub url: String,
 
-    /// Optional field specifying a custom registry file for the repository. Default:
+    /// Optional field specifying a custom metadata file for the repository. Default:
     /// `metadata.json`
-    pub registry: Option<String>,
+    pub metadata: Option<String>,
 
     /// Download Sources for different collections
     pub sources: HashMap<String, String>,
@@ -86,7 +86,7 @@ impl Config {
             repositories: vec![Repository {
                 name: "ajam".to_owned(),
                 url: format!("https://bin.ajam.dev/{ARCH}"),
-                registry: Some("METADATA.AIO.json".to_owned()),
+                metadata: Some("METADATA.AIO.json".to_owned()),
                 sources,
             }],
             parallel: Some(true),

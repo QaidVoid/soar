@@ -8,7 +8,8 @@ use crate::{
         color::{Color, ColorExt},
         constant::BIN_PATH,
     },
-    registry::{installed::InstalledPackages, package::appimage::remove_applinks},
+    package::appimage::remove_applinks,
+    registry::installed::InstalledPackages,
     success,
 };
 

@@ -18,14 +18,14 @@ use crate::{
         file::{get_file_type, FileType},
         util::{calculate_checksum, format_bytes, validate_checksum},
     },
-    registry::{
-        installed::InstalledPackages,
-        package::appimage::{integrate_appimage, setup_portable_dir},
-    },
+    registry::installed::InstalledPackages,
     warn,
 };
 
-use super::{appimage::integrate_using_remote_files, ResolvedPackage};
+use super::{
+    appimage::{integrate_appimage, integrate_using_remote_files, setup_portable_dir},
+    ResolvedPackage,
+};
 
 pub struct Installer {
     resolved_package: ResolvedPackage,
@@ -51,7 +51,6 @@ impl Installer {
         idx: usize,
         total: usize,
         installed_packages: Arc<Mutex<InstalledPackages>>,
-        force: bool,
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
@@ -59,10 +58,6 @@ impl Installer {
         yes: bool,
     ) -> Result<()> {
         let package = &self.resolved_package.package;
-        let is_installed = installed_packages
-            .lock()
-            .await
-            .is_installed(&self.resolved_package);
 
         let prefix = format!(
             "[{}/{}] {}",
@@ -70,10 +65,6 @@ impl Installer {
             total.color(Color::Cyan),
             package.full_name('/').color(Color::BrightBlue)
         );
-
-        if !force && is_installed {
-            return Err(anyhow::anyhow!("{}: Package is already installed", prefix));
-        }
 
         if let Some(parent) = self.temp_path.parent() {
             fs::create_dir_all(parent).await.context(format!(

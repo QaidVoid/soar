@@ -81,7 +81,6 @@ impl Updater {
                     .install(
                         idx,
                         packages_to_update.len(),
-                        true,
                         registry.installed_packages.clone(),
                         None,
                         None,

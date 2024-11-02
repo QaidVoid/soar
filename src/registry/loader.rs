@@ -9,16 +9,16 @@ use crate::{
     warn,
 };
 
-use super::fetcher::RegistryFetcher;
+use super::fetcher::MetadataFetcher;
 
-pub struct RegistryLoader;
+pub struct MetadataLoader;
 
-impl RegistryLoader {
+impl MetadataLoader {
     pub fn new() -> Self {
         Self
     }
 
-    pub async fn execute(&self, repo: &Repository, fetcher: &RegistryFetcher) -> Result<Vec<u8>> {
+    pub async fn execute(&self, repo: &Repository, fetcher: &MetadataFetcher) -> Result<Vec<u8>> {
         let checksum = fetcher.checksum(repo).await;
 
         if let Ok(checksum) = checksum {

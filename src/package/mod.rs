@@ -14,9 +14,7 @@ use remove::Remover;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::core::constant::PACKAGES_PATH;
-
-use super::installed::InstalledPackages;
+use crate::{core::constant::PACKAGES_PATH, registry::installed::InstalledPackages};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Package {
@@ -37,7 +35,7 @@ pub struct Package {
     pub extra_bins: String,
     pub icon: String,
     pub bin_id: Option<String>,
-    pub variant: Option<String>,
+    pub family: Option<String>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -52,7 +50,6 @@ impl ResolvedPackage {
         &self,
         idx: usize,
         total: usize,
-        force: bool,
         installed_packages: Arc<Mutex<InstalledPackages>>,
         portable: Option<String>,
         portable_home: Option<String>,
@@ -67,7 +64,6 @@ impl ResolvedPackage {
                 idx,
                 total,
                 installed_packages,
-                force,
                 portable,
                 portable_home,
                 portable_config,
@@ -96,19 +92,19 @@ impl Package {
     }
 
     pub fn full_name(&self, join_char: char) -> String {
-        let variant_prefix = self
-            .variant
+        let family_prefix = self
+            .family
             .to_owned()
-            .map(|variant| format!("{}{}", variant, join_char))
+            .map(|family| format!("{}{}", family, join_char))
             .unwrap_or_default();
-        format!("{}{}", variant_prefix, self.name)
+        format!("{}{}", family_prefix, self.name)
     }
 }
 
 #[derive(Debug)]
 pub struct PackageQuery {
     pub name: String,
-    pub variant: Option<String>,
+    pub family: Option<String>,
     pub collection: Option<String>,
 }
 
@@ -118,14 +114,14 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
         .map(|(n, r)| (n.to_owned(), (!r.is_empty()).then(|| r.to_lowercase())))
         .unwrap_or((query.to_owned(), None));
 
-    let (name, variant) = base_query
+    let (name, family) = base_query
         .split_once('/')
         .map(|(v, n)| (n.to_owned(), Some(v.to_owned())))
         .unwrap_or((base_query, None));
 
     PackageQuery {
         name,
-        variant,
+        family,
         collection,
     }
 }

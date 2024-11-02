@@ -24,17 +24,12 @@ use crate::{
         util::format_bytes,
     },
     error,
-    registry::{
-        installed::InstalledPackages,
-        package::{parse_package_query, ResolvedPackage},
-    },
+    package::{parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage},
+    registry::installed::InstalledPackages,
     warn,
 };
 
-use super::{
-    package::{run::Runner, Package, PackageQuery},
-    select_package_variant,
-};
+use super::select_single_package;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PackageStorage {
@@ -63,20 +58,11 @@ impl PackageStorage {
         let packages = self
             .get_packages(&pkg_query)
             .ok_or_else(|| anyhow::anyhow!("Package {} not found", package_name))?;
-        let package = match packages.len() {
-            0 => {
-                return Err(anyhow::anyhow!(
-                    "Is it a fish? Is is a frog? On no, it's a fly."
-                ));
-            }
-            1 => &packages[0],
-            _ => {
-                if yes {
-                    &packages[0]
-                } else {
-                    select_package_variant(&packages)?
-                }
-            }
+
+        let package = if yes || packages.len() == 1 {
+            &packages[0]
+        } else {
+            select_single_package(&packages)?
         };
 
         Ok(package.to_owned())
@@ -159,7 +145,6 @@ impl PackageStorage {
                         .install(
                             idx,
                             pkgs_len,
-                            force,
                             installed_packages,
                             portable,
                             portable_home,
@@ -189,7 +174,6 @@ impl PackageStorage {
                     .install(
                         idx,
                         resolved_packages.len(),
-                        force,
                         installed_packages.clone(),
                         portable.clone(),
                         portable_home.clone(),
@@ -277,8 +261,8 @@ impl PackageStorage {
                         map.get(pkg_name).into_iter().flat_map(|pkgs| {
                             pkgs.iter().filter_map(|pkg| {
                                 if pkg.name == pkg_name
-                                    && (query.variant.is_none()
-                                        || pkg.variant.as_ref() == query.variant.as_ref())
+                                    && (query.family.is_none()
+                                        || pkg.family.as_ref() == query.family.as_ref())
                                 {
                                     Some(ResolvedPackage {
                                         repo_name: repo_name.to_owned(),
@@ -330,8 +314,8 @@ impl PackageStorage {
                             } else {
                                 return None;
                             }
-                            if query.variant.is_none()
-                                || pkg.variant.as_ref() == query.variant.as_ref()
+                            if query.family.is_none()
+                                || pkg.family.as_ref() == query.family.as_ref()
                             {
                                 Some((
                                     score,
@@ -430,7 +414,7 @@ impl PackageStorage {
             let package_path = CACHE_PATH.join(&query.name);
             let mut resolved_pkg = ResolvedPackage::default();
             resolved_pkg.package.name = query.name;
-            resolved_pkg.package.variant = query.variant;
+            resolved_pkg.package.family = query.family;
 
             // TODO: check all the repo for package instead of choosing the first
             let base_url = CONFIG

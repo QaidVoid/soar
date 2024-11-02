@@ -16,6 +16,7 @@ use std::{env, path::Path};
 mod cli;
 pub mod core;
 mod misc;
+mod package;
 mod registry;
 
 pub async fn init() -> Result<()> {
@@ -65,8 +66,8 @@ pub async fn init() -> Result<()> {
                 .await?;
         }
         Commands::Sync => {
-            let mut registry = registry;
-            registry.fetch().await?;
+            // nothing to do here
+            // it can be used to force sync without doing any other operation
         }
         Commands::Remove { packages } => {
             registry.remove_packages(&packages).await?;
