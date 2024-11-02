@@ -81,6 +81,10 @@ pub enum Commands {
         /// Packages to remove
         #[arg(required = true)]
         packages: Vec<String>,
+
+        /// Remove exact package only
+        #[arg(required = false, long, short)]
+        exact: bool,
     },
 
     /// Sync with remote metadata

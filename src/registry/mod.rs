@@ -105,8 +105,10 @@ impl PackageRegistry {
             .await
     }
 
-    pub async fn remove_packages(&self, package_names: &[String]) -> Result<()> {
-        self.storage.remove_packages(package_names).await
+    pub async fn remove_packages(&self, package_names: &[String], exact: bool) -> Result<()> {
+        self.storage
+            .remove_packages(package_names, self.installed_packages.clone(), exact)
+            .await
     }
 
     pub async fn search(&self, package_name: &str, case_sensitive: bool) -> Result<()> {

@@ -70,8 +70,8 @@ pub async fn init() -> Result<()> {
             // nothing to do here
             // it can be used to force sync without doing any other operation
         }
-        Commands::Remove { packages } => {
-            registry.remove_packages(&packages).await?;
+        Commands::Remove { packages, exact } => {
+            registry.remove_packages(&packages, exact).await?;
         }
         Commands::Update { packages } => {
             registry.update(packages.as_deref()).await?;

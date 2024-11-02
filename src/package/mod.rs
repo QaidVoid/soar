@@ -1,7 +1,7 @@
 mod appimage;
 pub mod image;
 mod install;
-mod remove;
+pub mod remove;
 pub mod run;
 pub mod update;
 
@@ -10,7 +10,6 @@ use std::{path::PathBuf, sync::Arc};
 use anyhow::Result;
 use indicatif::MultiProgress;
 use install::Installer;
-use remove::Remover;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -71,13 +70,6 @@ impl ResolvedPackage {
                 yes,
             )
             .await?;
-        Ok(())
-    }
-
-    pub async fn remove(&self) -> Result<()> {
-        let remover = Remover::new(self).await?;
-        let mut installed_packages = InstalledPackages::new().await?;
-        remover.execute(&mut installed_packages).await?;
         Ok(())
     }
 }

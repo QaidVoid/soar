@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -8,10 +8,10 @@ use tokio::fs;
 use crate::{
     core::{
         color::{Color, ColorExt},
-        constant::{BIN_PATH, INSTALL_TRACK_PATH},
+        constant::{BIN_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH},
         util::{format_bytes, parse_size},
     },
-    package::{parse_package_query, ResolvedPackage},
+    package::{parse_package_query, remove::Remover, ResolvedPackage},
 };
 
 use super::storage::PackageStorage;
@@ -111,22 +111,18 @@ impl InstalledPackages {
         Ok(())
     }
 
-    pub async fn unregister_package(&mut self, resolved_package: &ResolvedPackage) -> Result<()> {
-        match self.is_installed(resolved_package) {
-            true => {
-                self.packages.retain(|installed| {
-                    installed.full_name('-') != resolved_package.package.full_name('-')
-                });
-            }
-            false => {
-                return Err(anyhow::anyhow!(
-                    "Package is not registered to install database."
-                ))
-            }
-        };
+    pub async fn unregister_package(&mut self, installed_package: &InstalledPackage) -> Result<()> {
+        self.packages
+            .retain(|installed| installed.full_name('-') != installed_package.full_name('-'));
 
         self.save().await?;
 
+        Ok(())
+    }
+
+    pub async fn remove(&mut self, installed_package: &InstalledPackage) -> Result<()> {
+        let remover = Remover::new(installed_package).await?;
+        remover.execute(self).await?;
         Ok(())
     }
 
@@ -258,5 +254,13 @@ impl InstalledPackage {
             .map(|family| format!("{}{}", family, join_char))
             .unwrap_or_default();
         format!("{}{}", family_prefix, self.name)
+    }
+
+    pub fn get_install_dir(&self) -> PathBuf {
+        PACKAGES_PATH.join(format!("{}-{}", &self.checksum[..8], self.full_name('-')))
+    }
+
+    pub fn get_install_path(&self) -> PathBuf {
+        self.get_install_dir().join(&self.bin_name)
     }
 }

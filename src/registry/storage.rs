@@ -200,13 +200,53 @@ impl PackageStorage {
         Ok(())
     }
 
-    pub async fn remove_packages(&self, package_names: &[String]) -> Result<()> {
-        let resolved_packages: Vec<ResolvedPackage> = package_names
-            .iter()
-            .filter_map(|package_name| self.resolve_package(package_name, false).ok())
-            .collect();
-        for package in resolved_packages {
-            package.remove().await?;
+    pub async fn remove_packages(
+        &self,
+        package_names: &[String],
+        installed_packages: Arc<Mutex<InstalledPackages>>,
+        exact: bool,
+    ) -> Result<()> {
+        let mut mut_guard = installed_packages.lock().await;
+        let installed_packages = &mut_guard.packages;
+
+        let mut packages_to_remove = Vec::new();
+        for package_name in package_names.iter() {
+            let query = parse_package_query(package_name);
+            let mut matching_packages = Vec::new();
+
+            for package in installed_packages {
+                if package.name != query.name {
+                    continue;
+                }
+                if let Some(ref ckey) = query.collection {
+                    if package.collection != *ckey {
+                        continue;
+                    }
+                }
+
+                let family_matches = match (&query.family, &package.family) {
+                    (None, None) => true,
+                    (None, Some(_)) => !exact,
+                    (Some(ref query_family), Some(ref package_family)) => {
+                        query_family == package_family
+                    }
+                    _ => false,
+                };
+
+                if family_matches {
+                    matching_packages.push(package.clone());
+                }
+            }
+
+            if matching_packages.is_empty() {
+                error!("{} is not installed.", package_name);
+            } else {
+                packages_to_remove.extend(matching_packages);
+            }
+        }
+
+        for package in packages_to_remove {
+            mut_guard.remove(&package).await?;
         }
 
         Ok(())

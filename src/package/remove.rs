@@ -9,42 +9,30 @@ use crate::{
         constant::BIN_PATH,
     },
     package::appimage::remove_applinks,
-    registry::installed::InstalledPackages,
+    registry::installed::{InstalledPackage, InstalledPackages},
     success,
 };
 
-use super::ResolvedPackage;
-
 pub struct Remover {
-    resolved_package: ResolvedPackage,
+    package: InstalledPackage,
 }
 
 impl Remover {
-    pub async fn new(resolved_package: &ResolvedPackage) -> Result<Self> {
+    pub async fn new(package: &InstalledPackage) -> Result<Self> {
         Ok(Self {
-            resolved_package: resolved_package.to_owned(),
+            package: package.clone(),
         })
     }
 
     pub async fn execute(&self, installed_packages: &mut InstalledPackages) -> Result<()> {
-        let package = &self.resolved_package.package;
-        let installed = installed_packages.find_package(&self.resolved_package);
-        let Some(installed) = installed else {
-            return Err(anyhow::anyhow!(
-                "Package {}-{} is not installed.",
-                package.full_name('/').color(Color::Blue),
-                package.version.clone().color(Color::Green)
-            ));
-        };
+        let package = &self.package;
 
-        let install_dir = package.get_install_dir(&installed.checksum);
-        let install_path = package.get_install_path(&installed.checksum);
+        let install_dir = package.get_install_dir();
+        let install_path = package.get_install_path();
         self.remove_symlink(&install_path).await?;
         remove_applinks(&package.name, &package.bin_name, &install_path).await?;
         self.remove_package_path(&install_dir).await?;
-        installed_packages
-            .unregister_package(&self.resolved_package)
-            .await?;
+        installed_packages.unregister_package(&self.package).await?;
 
         success!(
             "Package {} removed successfully.",
@@ -55,7 +43,7 @@ impl Remover {
     }
 
     pub async fn remove_symlink(&self, install_path: &Path) -> Result<()> {
-        let package = &self.resolved_package.package;
+        let package = &self.package;
         let symlink_path = BIN_PATH.join(&package.bin_name);
         if symlink_path.exists() {
             let target = fs::read_link(&symlink_path).await?;
