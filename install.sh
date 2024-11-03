@@ -84,7 +84,7 @@ main() {
             x86_64)
                 ARCH="x86_64"
                 ;;
-            aarcharm64)
+            aarch64)
                 ARCH="aarch64"
                 ;;
             *)
