@@ -399,7 +399,8 @@ impl PackageStorage {
             resolved_pkg
                 .package
                 .build_script
-                .replace("tree", "raw/refs/heads")
+                .replacen("/tree/", "/raw/refs/heads/", 1)
+                .replacen("/blob/", "/raw/refs/heads/", 1)
         } else {
             resolved_pkg.package.build_script
         };

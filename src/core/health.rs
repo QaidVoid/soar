@@ -135,26 +135,35 @@ async fn check_capabilities() -> Option<&'static str> {
 async fn check_fusermount() {
     let mut error = String::new();
 
-    match which::which("fusermount") {
-        Ok(path) => match path.metadata() {
+    let fusermount_path = match which::which("fusermount3") {
+        Ok(path) => Some(path),
+        Err(_) => match which::which("fusermount") {
+            Ok(path) => Some(path),
+            Err(_) => {
+                error = format!(
+                    "{} not found. Please install {}.\n",
+                    "fusermount".color(Color::Blue),
+                    "fuse".color(Color::Blue)
+                );
+                None
+            }
+        },
+    };
+
+    if let Some(fusermount_path) = fusermount_path {
+        match fusermount_path.metadata() {
             Ok(meta) => {
                 let permissions = meta.permissions().mode();
                 if permissions != 0o104755 {
                     error = format!(
-                        "Invalid {} file mode bits. Set 4755 for {}",
-                        "fusermount".color(Color::Blue),
-                        path.to_string_lossy().color(Color::Green)
+                        "Invalid file mode bits. Set 4755 for {}.",
+                        fusermount_path.to_string_lossy().color(Color::Green)
                     );
                 }
             }
-            Err(_) => error = "Unable to read fusermount".to_string(),
-        },
-        Err(_) => {
-            error = format!(
-                "{} not found. Please install {}",
-                "fusermount".color(Color::Blue),
-                "fuse".color(Color::Blue)
-            );
+            Err(_) => {
+                error = "Unable to read fusermount metadata.".to_owned();
+            }
         }
     }
 
