@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use indicatif::MultiProgress;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use crate::{
     core::color::{Color, ColorExt},
@@ -72,6 +72,11 @@ impl Updater {
 
         drop(installed_guard);
 
+        let total_progress_bar =
+            multi_progress.add(ProgressBar::new(packages_to_update.len() as u64));
+
+        total_progress_bar.set_style(ProgressStyle::with_template("Updating {pos}/{len}").unwrap());
+
         if packages_to_update.is_empty() {
             error!("No updates available");
         } else {
@@ -90,7 +95,10 @@ impl Updater {
                     )
                     .await?;
                 update_count += 1;
+                total_progress_bar.inc(1);
             }
+
+            total_progress_bar.finish_and_clear();
             success!(
                 "{} packages updated.",
                 update_count.color(Color::BrightMagenta)

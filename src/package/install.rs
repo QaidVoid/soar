@@ -123,10 +123,9 @@ impl Installer {
                 file.write_all(&chunk).await?;
                 download_progress.inc(chunk.len() as u64);
             }
+            download_progress.finish();
             file.flush().await?;
         }
-
-        download_progress.finish();
 
         if package.bsum == "null" {
             warn!(

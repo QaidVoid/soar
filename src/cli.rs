@@ -69,7 +69,7 @@ pub enum Commands {
     #[command(arg_required_else_help = true)]
     #[clap(name = "query", visible_alias = "Q")]
     Query {
-        /// Package to inspect
+        /// Package to query
         #[arg(required = true)]
         query: String,
     },
@@ -117,9 +117,9 @@ pub enum Commands {
 
     /// Inspect package build log
     #[command(arg_required_else_help = true)]
-    #[clap(name = "inspect", alias = "log")]
+    #[clap(name = "log")]
     Inspect {
-        /// Package to inspect
+        /// Package to view log for
         #[arg(required = true)]
         package: String,
     },
