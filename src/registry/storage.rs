@@ -385,16 +385,31 @@ impl PackageStorage {
             .collect()
     }
 
-    pub async fn inspect(&self, package_name: &str) -> Result<()> {
+    pub async fn inspect(&self, package_name: &str, inspect_type: &str) -> Result<()> {
         let resolved_pkg = self.resolve_package(package_name, false)?;
 
         let client = reqwest::Client::new();
-        let url = resolved_pkg.package.build_log;
+        let url = if inspect_type == "log" {
+            resolved_pkg.package.build_log
+        } else if resolved_pkg
+            .package
+            .build_script
+            .starts_with("https://github.com")
+        {
+            resolved_pkg
+                .package
+                .build_script
+                .replace("tree", "raw/refs/heads")
+        } else {
+            resolved_pkg.package.build_script
+        };
+
         let response = client.get(&url).send().await?;
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
-                "Error fetching log from {} [{}]",
+                "Error fetching build {} from {} [{}]",
+                inspect_type,
                 url.color(Color::Blue),
                 response.status().color(Color::Red)
             ));
@@ -403,7 +418,8 @@ impl PackageStorage {
         let content_length = response.content_length().unwrap_or_default();
         if content_length > 1_048_576 {
             warn!(
-                "The log file is too large ({}). Do you really want to download and view it (y/N)? ",
+                "The build {} file is too large ({}). Do you really want to download and view it (y/N)? ",
+                inspect_type,
                 format_bytes(content_length).color(Color::Magenta)
             );
 
@@ -418,7 +434,8 @@ impl PackageStorage {
         }
 
         println!(
-            "Fetching log from {} [{}]",
+            "Fetching {} from {} [{}]",
+            inspect_type,
             url.color(Color::Blue),
             format_bytes(response.content_length().unwrap_or_default()).color(Color::Magenta)
         );
@@ -430,9 +447,9 @@ impl PackageStorage {
             let chunk = chunk.context("Failed to read chunk")?;
             content.extend_from_slice(&chunk);
         }
-        let log_str = String::from_utf8_lossy(&content).replace("\r", "\n");
+        let output = String::from_utf8_lossy(&content).replace("\r", "\n");
 
-        println!("\n{}", log_str);
+        println!("\n{}", output);
 
         Ok(())
     }

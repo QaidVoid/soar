@@ -97,16 +97,17 @@ cargo install --path .
 Usage: soar [OPTIONS] <COMMAND>
 
 Commands:
-  install   Install packages [aliases: i]
-  search    Search package [aliases: s]
+  install   Install packages [aliases: i, add]
+  search    Search package [aliases: s, find]
   query     Query package info [aliases: Q]
-  remove    Remove packages [aliases: r]
-  sync      Sync with remote metadata [aliases: S]
-  update    Update packages [aliases: u]
-  info      Show info about installed packages
-  list      List all available packages
-  inspect   Inspect package build log
-  run       Run packages without installing to PATH [aliases: exec]
+  remove    Remove packages [aliases: r, del]
+  sync      Sync with remote metadata [aliases: S, fetch]
+  update    Update packages [aliases: u, upgrade]
+  info      Show info about installed packages [aliases: list-installed]
+  list      List all available packages [aliases: ls]
+  log       Inspect package build log
+  inspect   Inspect package build script
+  run       Run packages without installing to PATH [aliases: exec, execute]
   use       Use package from different family
   download  Download arbitrary files [aliases: dl]
   health    Health check

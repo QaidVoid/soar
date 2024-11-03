@@ -286,8 +286,8 @@ impl PackageRegistry {
         Ok(())
     }
 
-    pub async fn inspect(&self, package_name: &str) -> Result<()> {
-        self.storage.inspect(package_name).await
+    pub async fn inspect(&self, package_name: &str, inspect_type: &str) -> Result<()> {
+        self.storage.inspect(package_name, inspect_type).await
     }
 
     pub async fn run(&self, command: &[String], yes: bool) -> Result<()> {

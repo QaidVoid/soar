@@ -92,7 +92,10 @@ pub async fn init() -> Result<()> {
             registry.list(collection.as_deref()).await?;
         }
         Commands::Inspect { package } => {
-            registry.inspect(&package).await?;
+            registry.inspect(&package, "script").await?;
+        }
+        Commands::Log { package } => {
+            registry.inspect(&package, "log").await?;
         }
         Commands::Run { command, yes } => {
             registry.run(command.as_ref(), yes).await?;

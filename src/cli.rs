@@ -25,7 +25,7 @@ pub struct Args {
 pub enum Commands {
     /// Install packages
     #[command(arg_required_else_help = true)]
-    #[clap(name = "install", visible_alias = "i", alias = "add")]
+    #[clap(name = "install", visible_alias = "i", visible_alias = "add")]
     Install {
         /// Packages to install
         #[arg(required = true)]
@@ -54,7 +54,7 @@ pub enum Commands {
 
     /// Search package
     #[command(arg_required_else_help = true)]
-    #[clap(name = "search", visible_alias = "s", alias = "find")]
+    #[clap(name = "search", visible_alias = "s", visible_alias = "find")]
     Search {
         /// Query to search
         #[arg(required = true)]
@@ -76,7 +76,7 @@ pub enum Commands {
 
     /// Remove packages
     #[command(arg_required_else_help = true)]
-    #[clap(name = "remove", visible_alias = "r", alias = "del")]
+    #[clap(name = "remove", visible_alias = "r", visible_alias = "del")]
     Remove {
         /// Packages to remove
         #[arg(required = true)]
@@ -88,11 +88,11 @@ pub enum Commands {
     },
 
     /// Sync with remote metadata
-    #[clap(name = "sync", visible_alias = "S", alias = "fetch")]
+    #[clap(name = "sync", visible_alias = "S", visible_alias = "fetch")]
     Sync,
 
     /// Update packages
-    #[clap(name = "update", visible_alias = "u", alias = "upgrade")]
+    #[clap(name = "update", visible_alias = "u", visible_alias = "upgrade")]
     Update {
         /// Packages to update
         #[arg(required = false)]
@@ -100,7 +100,7 @@ pub enum Commands {
     },
 
     /// Show info about installed packages
-    #[clap(name = "info", alias = "list-installed")]
+    #[clap(name = "info", visible_alias = "list-installed")]
     ListInstalledPackages {
         /// Packages to get info about
         #[arg(required = false)]
@@ -108,7 +108,7 @@ pub enum Commands {
     },
 
     /// List all available packages
-    #[clap(name = "list", alias = "ls")]
+    #[clap(name = "list", visible_alias = "ls")]
     ListPackages {
         /// Which collection to get the packages from
         #[arg(required = false)]
@@ -118,15 +118,24 @@ pub enum Commands {
     /// Inspect package build log
     #[command(arg_required_else_help = true)]
     #[clap(name = "log")]
-    Inspect {
+    Log {
         /// Package to view log for
+        #[arg(required = true)]
+        package: String,
+    },
+
+    /// Inspect package build script
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "inspect")]
+    Inspect {
+        /// Package to view build script for
         #[arg(required = true)]
         package: String,
     },
 
     /// Run packages without installing to PATH
     #[command(arg_required_else_help = true)]
-    #[clap(name = "run", visible_alias = "exec", alias = "execute")]
+    #[clap(name = "run", visible_alias = "exec", visible_alias = "execute")]
     Run {
         /// Skip all prompts and use first
         #[arg(required = false, short, long)]
