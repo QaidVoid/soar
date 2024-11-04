@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-use soar::{core::color::Color, core::color::ColorExt, error, init};
+use soar_cli::{core::color::Color, core::color::ColorExt, error, init};
 
 #[tokio::main]
 async fn main() {
