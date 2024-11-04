@@ -33,6 +33,7 @@ pub struct Package {
     pub category: String,
     pub extra_bins: String,
     pub icon: String,
+    pub desktop: Option<String>,
     pub bin_id: Option<String>,
     pub family: Option<String>,
 }

@@ -6,9 +6,9 @@ Soar is a fast Linux package manager that doesn't suck. Works with static binari
 [![Documentation](https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue)](https://soar.qaidvoid.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<center>
+<p align="center">
     <img src="icons/hicolor/scalable/apps/soar.svg" alt="soar" width="256"/>
-</center>
+</p>
 
 ## 🌟 Key Features
 - [Universal Package Support](https://soar.qaidvoid.dev/#universal-package-support)

@@ -2,7 +2,7 @@ use std::{
     fs::{File, Permissions},
     io::{BufReader, Write},
     os::unix::fs::PermissionsExt,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -192,8 +192,17 @@ impl Installer {
             FileType::FlatImage => {
                 if integrate_using_remote_files(package, &self.install_path)
                     .await
-                    .is_err()
+                    .is_ok()
                 {
+                    setup_portable_dir(
+                        &package.bin_name,
+                        Path::new(&format!(".{}", self.install_path.display())),
+                        None,
+                        None,
+                        portable_config,
+                    )
+                    .await?;
+                } else {
                     warn!("{}: Failed to integrate FlatImage", prefix);
                 };
             }

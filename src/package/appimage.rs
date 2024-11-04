@@ -297,18 +297,31 @@ pub async fn integrate_using_remote_files(package: &Package, file_path: &Path) -
     let desktop_output_path = file_path.with_extension("desktop");
 
     let icon_url = &package.icon;
-    let (base_url, _) = package.icon.rsplit_once('/').unwrap();
-    let desktop_url = format!("{}/{}.desktop", base_url, &package.bin_name);
+    let desktop_url = &package.desktop;
 
-    let (icon_content, desktop_content) = try_join!(
-        download(icon_url, "image", false),
-        download(&desktop_url, "desktop file", false)
-    )?;
+    let icon_content = download(icon_url, "image", false).await?;
 
-    try_join!(
-        fs::write(&icon_output_path, &icon_content),
-        fs::write(&desktop_output_path, &desktop_content)
-    )?;
+    fs::write(&icon_output_path, &icon_content).await?;
+
+    let desktop_content = if let Some(desktop_url) = desktop_url {
+        match download(desktop_url, "desktop file", false).await {
+            Ok(content) => Some(content),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
+
+    let desktop_content = match desktop_content {
+        Some(content) => content,
+        None => create_default_desktop_entry(
+            &package.bin_name,
+            &package.name,
+            &package.category.replace(',', ";"),
+        ),
+    };
+
+    fs::write(&desktop_output_path, &desktop_content).await?;
 
     try_join!(
         process_icon(&icon_output_path, &package.bin_name, data_path),
@@ -321,6 +334,20 @@ pub async fn integrate_using_remote_files(package: &Package, file_path: &Path) -
     )?;
 
     Ok(())
+}
+
+fn create_default_desktop_entry(bin_name: &str, name: &str, categories: &str) -> Vec<u8> {
+    format!(
+        "[Desktop Entry]\n\
+        Type=Application\n\
+        Name={}\n\
+        Icon={}\n\
+        Exec={}\n\
+        Categories={};\n",
+        name, bin_name, bin_name, categories
+    )
+    .as_bytes()
+    .to_vec()
 }
 
 pub async fn setup_portable_dir(
