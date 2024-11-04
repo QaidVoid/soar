@@ -1,17 +1,21 @@
-# 🚀 Soar Package Manager
+# Soar Package Manager
 
-Soar is a Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff. It's fast too.
+Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
 
 [![Crates.io](https://img.shields.io/crates/v/soar-cli)](https://crates.io/crates/soar-cli)
 [![Documentation](https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue)](https://soar.qaidvoid.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+<center>
+    <img src="icons/hicolor/scalable/apps/soar.svg" alt="soar" width="256"/>
+</center>
 
 ## 🌟 Key Features
 - [Universal Package Support](https://soar.qaidvoid.dev/#universal-package-support)
 - [Desktop Integration](https://soar.qaidvoid.dev/#desktop-integration)
 
 ## 🔧 Installation
-Follow installation instructions at [installation.md](./docs/src/installation.md)
+Installation guide can be found [here](https://soar.qaidvoid.dev/installation.html)
 
 ## 🎯 Usage
 
@@ -44,7 +48,7 @@ Options:
 ## ⚙️ Configuration
 
 Soar uses a JSON configuration file located at `~/.config/soar/config.json`.
-For configuration guide, follow [configuration.md](./docs/src/configuration.md)
+For configuration guide, follow [here](https://soar.qaidvoid.dev/configuration.html)
 
 ## 🤝 Contributing
 
