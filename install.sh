@@ -64,15 +64,6 @@ main() {
         printf "%s" "$(pwd)"
     }
 
-    get_latest_version() {
-        latest_version=$($DOWNLOAD_TOOL "https://api.github.com/repos/QaidVoid/soar/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
-        if [ -z "$latest_version" ]; then
-            echo "Error: Could not determine latest version"
-            exit 1
-        fi
-        printf "%s" "$latest_version"
-    }
-
     # Function to download and install
     install_soar() {
         DOWNLOAD_TOOL=$(check_download_tool)
@@ -98,10 +89,9 @@ main() {
         if [[ "$SOAR_VERSION" == *"nightly"* ]]; then
             RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/nightly/soar-nightly-$ARCH-linux"
         elif [[ "$SOAR_VERSION" == *"latest"* ]]; then
-            SOAR_VERSION=$(get_latest_version)
-            RELEASE_URL="https://github.com/QaidVoid/soar/releases/latest/download/soar-$SOAR_VERSION-$ARCH-linux"
+            RELEASE_URL="https://github.com/QaidVoid/soar/releases/latest/download/soar-$ARCH-linux"
         else
-            RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/v$SOAR_VERSION/soar-$SOAR_VERSION-$ARCH-linux"
+            RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/v$SOAR_VERSION/soar-$ARCH-linux"
         fi
         echo $RELEASE_URL
 

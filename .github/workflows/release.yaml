@@ -74,27 +74,26 @@ jobs:
           mkdir -p release
           cp {LICENSE,README.md,CHANGELOG.md} release/
           cp "target/${{ matrix.build.TARGET }}/release/soar" release/
-          mv release/ soar-${{ env.RELEASE_VERSION }}/
       - name: Create release artifacts
         shell: bash
         run: |
-            cp soar-${{ env.RELEASE_VERSION }}/soar soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}
-            b3sum soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }} \
-              > soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.b3sum
-            tar -czvf soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.tar.gz \
-              soar-${{ env.RELEASE_VERSION }}/
-            b3sum soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.tar.gz \
-              > soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}.tar.gz.b3sum
+            cp release/soar soar-${{ matrix.build.NAME }}
+            b3sum soar-${{ matrix.build.NAME }} \
+              > soar-${{ matrix.build.NAME }}.b3sum
+            tar -czvf soar-${{ matrix.build.NAME }}.tar.gz \
+              release/
+            b3sum soar-${{ matrix.build.NAME }}.tar.gz \
+              > soar-${{ matrix.build.NAME }}.tar.gz.b3sum
       - name: Publish to GitHub
         if: ${{ !contains(github.ref, '-') }}
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: soar-${{ env.RELEASE_VERSION }}-${{ matrix.build.NAME }}*
+          file: soar-${{ matrix.build.NAME }}*
           file_glob: true
           overwrite: true
           tag: ${{ github.ref }}
-          release_name: "Release v${{ env.RELEASE_VERSION }}"
+          release_name: "Soar v${{ env.RELEASE_VERSION }}"
           body: "${{ needs.generate-changelog.outputs.release_body }}"
       - name: Publish to GitHub (pre-release)
         if: ${{ contains(github.ref, '-') }}

@@ -1,6 +1,6 @@
 [package]
 name = "soar"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Rabindra Dhakal <contact@qaidvoid.dev>"]
 description = "A modern package manager for Linux"
 license = "MIT"

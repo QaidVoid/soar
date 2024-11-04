@@ -1,4 +1,43 @@
 
+## [0.4.0](https://github.com/QaidVoid/soar/compare/v0.3.1..v0.4.0) - 2024-11-04
+
+### ⛰️  Features
+
+- *(download)* Add progressbar & output file path support - ([f7dcea8](https://github.com/QaidVoid/soar/commit/f7dcea8ef6a19e3a8496c78d1ea9097846ecff28))
+- *(download)* Fallback to download package if invalid URL - ([eccbb87](https://github.com/QaidVoid/soar/commit/eccbb87e640af2477e3c55fe41c0e344f6b25da0))
+- *(flatimage)* Integrate flatimage using remote files - ([e94d480](https://github.com/QaidVoid/soar/commit/e94d48085fb2e64f61b09053d0c6578d2e7761cb))
+- *(inspect)* Add inspect command to view build script - ([bcef36c](https://github.com/QaidVoid/soar/commit/bcef36cbc0045230357ca37afb5c7480f4cab046))
+- *(progress)* Re-implement installation progress bar - ([89ed804](https://github.com/QaidVoid/soar/commit/89ed804e396944b4e53a8091c0024e261509add5))
+- *(yes)* Skip prompts and select first value - ([286743e](https://github.com/QaidVoid/soar/commit/286743e60c900a915fd6821ff47e13a66ceaf234))
+
+### 🐛 Bug Fixes
+
+- *(download)* Don't hold downloads in memory - ([baf33d9](https://github.com/QaidVoid/soar/commit/baf33d997a8f2a75d965094aa129ad44348fc194))
+- *(health)* Check fusermount3 and use fusermount as fallback - ([3cef007](https://github.com/QaidVoid/soar/commit/3cef007d12351c2226f1006961795b7a6a4f4ed8))
+- *(image)* Fix image rendering - ([b190bd0](https://github.com/QaidVoid/soar/commit/b190bd0eaa09fd2357939fd0986e62d94fcfcb4a))
+- *(package)* Fix multi-repo install handling - ([8654fbb](https://github.com/QaidVoid/soar/commit/8654fbbc4c84c7f632f9e971732f60b960c01fd9))
+- *(remove)* Improve package removal - ([3f0307a](https://github.com/QaidVoid/soar/commit/3f0307aab929ed83e2f602cf33763162095cd343))
+- *(update)* Fix update progressbar - ([948a42e](https://github.com/QaidVoid/soar/commit/948a42eab471a6dde413636ba0b8c0933e7d47c0))
+
+### 🚜 Refactor
+
+- *(health)* Separate user namespaces and fuse issues - ([4b7fd4f](https://github.com/QaidVoid/soar/commit/4b7fd4f9219ce93a8b7612b38f1d68cf38b5ee0d))
+- *(image)* Reduce image handling complexity - ([39e9c1b](https://github.com/QaidVoid/soar/commit/39e9c1b3e97a6c628abe5d092adafba37ff30b9d))
+- *(list)* Sort list output - ([2c8d894](https://github.com/QaidVoid/soar/commit/2c8d8945ad80d4578d815b72b5791fd111257f26))
+- *(project)* Minor refactor - ([0b0bd06](https://github.com/QaidVoid/soar/commit/0b0bd06811fbe3d7a91d6e46a5b2598a4ffe5957))
+
+### 📚 Documentation
+
+- *(README)* Fix installation instructions - ([b2fc746](https://github.com/QaidVoid/soar/commit/b2fc74664da9463a82d1f445d1560c28d7134f66))
+- *(readme)* Update README - ([2fb53cc](https://github.com/QaidVoid/soar/commit/2fb53cc42378d17c64388a7b780298ab82de103e))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(script)* Update install script - ([a18cba3](https://github.com/QaidVoid/soar/commit/a18cba3092c892173d00551796d1b8c489cf8324))
+- *(script)* Add install script - ([7bea339](https://github.com/QaidVoid/soar/commit/7bea3393b1d9f6ada476b9f3b55b875051ef8f6f))
+- *(workflow)* Remove existing nightly before publishing new - ([e1171af](https://github.com/QaidVoid/soar/commit/e1171af85b6816c512cdf1ab91c01580ba5195a8))
+
+
 ## [0.3.1](https://github.com/QaidVoid/soar/compare/v0.3.0..v0.3.1) - 2024-10-26
 
 ### 🐛 Bug Fixes
