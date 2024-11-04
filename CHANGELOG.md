@@ -1,4 +1,15 @@
 
+## [0.4.1](https://github.com/QaidVoid/soar/compare/v0.4.0..v0.4.1) - 2024-11-04
+
+### 🐛 Bug Fixes
+
+- *(sigpipe)* Terminate if pipe is broken - ([bc50076](https://github.com/QaidVoid/soar/commit/bc50076f6cee0101a927f40757c74ed0067bf0ee))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(cargo)* Update package name - ([381dd66](https://github.com/QaidVoid/soar/commit/381dd66c80842debd78226e752ee474c5a2ae9d8))
+
+
 ## [0.4.0](https://github.com/QaidVoid/soar/compare/v0.3.1..v0.4.0) - 2024-11-04
 
 ### ⛰️  Features
