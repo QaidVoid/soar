@@ -161,9 +161,9 @@ pub async fn integrate_appimage(
             match resolve_and_extract(&squashfs, node, &output_path, &mut HashSet::new()) {
                 Ok(()) => {
                     if extension == "png" {
-                        process_icon(&output_path, &package.bin_name, data_path).await?;
+                        process_icon(&output_path, &package.pkg_name, data_path).await?;
                     } else {
-                        process_desktop(&output_path, &package.bin_name, &package.name, data_path)
+                        process_desktop(&output_path, &package.pkg_name, &package.pkg, data_path)
                             .await?;
                     }
                 }
@@ -315,8 +315,8 @@ pub async fn integrate_using_remote_files(package: &Package, file_path: &Path) -
     let desktop_content = match desktop_content {
         Some(content) => content,
         None => create_default_desktop_entry(
-            &package.bin_name,
-            &package.name,
+            &package.pkg_name,
+            &package.pkg,
             &package.category.replace(',', ";"),
         ),
     };
@@ -324,11 +324,11 @@ pub async fn integrate_using_remote_files(package: &Package, file_path: &Path) -
     fs::write(&desktop_output_path, &desktop_content).await?;
 
     try_join!(
-        process_icon(&icon_output_path, &package.bin_name, data_path),
+        process_icon(&icon_output_path, &package.pkg_name, data_path),
         process_desktop(
             &desktop_output_path,
-            &package.bin_name,
-            &package.name,
+            &package.pkg_name,
+            &package.pkg,
             data_path
         )
     )?;

@@ -1,5 +1,7 @@
 use std::{
-    env, mem,
+    env,
+    io::Write,
+    mem,
     path::{Path, PathBuf},
 };
 
@@ -12,6 +14,8 @@ use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt},
 };
+
+use crate::warn;
 
 use super::{
     color::{Color, ColorExt},
@@ -88,9 +92,12 @@ pub fn parse_size(size_str: &str) -> Option<u64> {
     let size_str = size_str.trim();
     let units = [
         ("B", 1u64),
-        ("KB", 1024u64),
-        ("MB", 1024u64 * 1024),
-        ("GB", 1024u64 * 1024 * 1024),
+        ("KB", 1000u64),
+        ("MB", 1000u64 * 1000),
+        ("GB", 1000u64 * 1000 * 1000),
+        ("KiB", 1024u64),
+        ("MiB", 1024u64 * 1024),
+        ("GiB", 1024u64 * 1024 * 1024),
     ];
 
     for (unit, multiplier) in &units {
@@ -347,4 +354,25 @@ pub fn download_progress_style(with_msg: bool) -> ProgressStyle {
             },
         )
         .progress_chars("━━")
+}
+
+#[derive(PartialEq, Eq)]
+pub enum AskType {
+    Warn,
+    Normal,
+}
+
+pub fn interactive_ask(ques: &str, ask_type: AskType) -> Result<String> {
+    if ask_type == AskType::Warn {
+        warn!("{ques}");
+    } else {
+        println!("{ques}");
+    }
+
+    std::io::stdout().flush()?;
+
+    let mut response = String::new();
+    std::io::stdin().read_line(&mut response)?;
+
+    Ok(response.trim().to_owned())
 }

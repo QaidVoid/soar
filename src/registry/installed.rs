@@ -91,9 +91,9 @@ impl InstalledPackages {
         let new_installed = InstalledPackage {
             repo_name: resolved_package.repo_name.to_owned(),
             collection: resolved_package.collection.to_string().to_owned(),
-            name: package.name,
+            name: package.pkg,
             family: package.family,
-            bin_name: package.bin_name,
+            bin_name: package.pkg_name,
             version: package.version,
             checksum: checksum.to_owned(),
             size: parse_size(&package.size).unwrap_or_default(),

@@ -5,7 +5,10 @@ pub mod remove;
 pub mod run;
 pub mod update;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::Result;
 use indicatif::MultiProgress;
@@ -13,12 +16,18 @@ use install::Installer;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{core::constant::PACKAGES_PATH, registry::installed::InstalledPackages};
+use crate::{
+    core::{
+        constant::PACKAGES_PATH,
+        util::{interactive_ask, AskType},
+    },
+    registry::installed::InstalledPackages,
+};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Package {
-    pub name: String,
-    pub bin_name: String,
+    pub pkg: String,
+    pub pkg_name: String,
     pub description: String,
     pub note: String,
     pub version: String,
@@ -27,14 +36,14 @@ pub struct Package {
     pub bsum: String,
     pub build_date: String,
     pub src_url: String,
-    pub web_url: String,
+    pub homepage: String,
     pub build_script: String,
     pub build_log: String,
     pub category: String,
     pub extra_bins: String,
     pub icon: String,
     pub desktop: Option<String>,
-    pub bin_id: Option<String>,
+    pub pkg_id: Option<String>,
     pub family: Option<String>,
 }
 
@@ -55,10 +64,8 @@ impl ResolvedPackage {
         portable_home: Option<String>,
         portable_config: Option<String>,
         multi_progress: Arc<MultiProgress>,
-        yes: bool,
     ) -> Result<()> {
-        let install_path = self.package.get_install_path(&self.package.bsum[..8]);
-        let mut installer = Installer::new(self, install_path);
+        let mut installer = Installer::new(self);
         installer
             .execute(
                 idx,
@@ -68,7 +75,6 @@ impl ResolvedPackage {
                 portable_home,
                 portable_config,
                 multi_progress,
-                yes,
             )
             .await?;
         Ok(())
@@ -81,7 +87,7 @@ impl Package {
     }
 
     pub fn get_install_path(&self, checksum: &str) -> PathBuf {
-        self.get_install_dir(checksum).join(&self.bin_name)
+        self.get_install_dir(checksum).join(&self.pkg_name)
     }
 
     pub fn full_name(&self, join_char: char) -> String {
@@ -90,7 +96,7 @@ impl Package {
             .to_owned()
             .map(|family| format!("{}{}", family, join_char))
             .unwrap_or_default();
-        format!("{}{}", family_prefix, self.name)
+        format!("{}{}", family_prefix, self.pkg)
     }
 }
 
@@ -117,4 +123,25 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
         family,
         collection,
     }
+}
+
+#[inline]
+pub fn ask_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPackage> {
+    let bin_name = interactive_ask("Binary Name:", AskType::Normal)?;
+
+    let package = Package {
+        pkg: name.to_owned(),
+        pkg_name: bin_name,
+        size: size.to_string(),
+        download_url: path.to_string_lossy().to_string(),
+        ..Default::default()
+    };
+
+    let resolved_package = ResolvedPackage {
+        repo_name: "local".to_owned(),
+        collection: "local".to_string(),
+        package,
+    };
+
+    Ok(resolved_package)
 }
