@@ -12,7 +12,7 @@ pub enum FileType {
 
 pub fn get_file_type<T>(file: &mut BufReader<T>) -> FileType
 where
-    T: std::io::Read,
+    T: Read,
 {
     let mut magic_bytes = [0u8; 12];
     if file.read_exact(&mut magic_bytes).is_ok() {

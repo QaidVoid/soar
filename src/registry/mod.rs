@@ -195,7 +195,7 @@ impl PackageRegistry {
                 ),
                 (
                     "Extra Bins",
-                    package.extra_bins.clone().color(Color::BrightBlack),
+                    package.provides.clone().color(Color::BrightBlack),
                 ),
             ];
 

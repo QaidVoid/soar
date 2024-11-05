@@ -40,7 +40,7 @@ pub struct Package {
     pub build_script: String,
     pub build_log: String,
     pub category: String,
-    pub extra_bins: String,
+    pub provides: String,
     pub icon: String,
     pub desktop: Option<String>,
     pub pkg_id: Option<String>,

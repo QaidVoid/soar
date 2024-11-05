@@ -1,6 +1,6 @@
 use std::{
     fs::{File, Permissions},
-    io::{BufReader, Write},
+    io::BufReader,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::Arc,

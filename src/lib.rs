@@ -6,7 +6,7 @@ use registry::PackageRegistry;
 
 use core::{
     color::{Color, ColorExt},
-    config,
+    config::{self, generate_default_config},
     constant::BIN_PATH,
     health::check_health,
     util::{cleanup, setup_required_paths},
@@ -24,7 +24,6 @@ pub async fn init() -> Result<()> {
 
     config::init();
     setup_required_paths().await?;
-    let registry = PackageRegistry::new().await?;
 
     let path_env = env::var("PATH")?;
     if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
@@ -34,6 +33,8 @@ pub async fn init() -> Result<()> {
             "PATH".color(Color::BrightGreen).bold()
         );
     }
+
+    let registry = PackageRegistry::new().await?;
 
     let _ = cleanup().await;
 
@@ -108,6 +109,9 @@ pub async fn init() -> Result<()> {
         }
         Commands::Health => {
             check_health().await;
+        }
+        Commands::DefConfig => {
+            generate_default_config()?;
         }
     };
 

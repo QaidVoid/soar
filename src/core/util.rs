@@ -1,5 +1,6 @@
 use std::{
     env,
+    ffi::CStr,
     io::Write,
     mem,
     path::{Path, PathBuf},
@@ -8,7 +9,7 @@ use std::{
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use indicatif::{ProgressState, ProgressStyle};
-use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
+use libc::{geteuid, getpwuid, ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
 use termion::cursor;
 use tokio::{
     fs::{self, File},
@@ -22,9 +23,27 @@ use super::{
     constant::{BIN_PATH, CACHE_PATH, INSTALL_TRACK_PATH, PACKAGES_PATH, REGISTRY_PATH},
 };
 
+fn get_username() -> Result<String> {
+    unsafe {
+        let uid = geteuid();
+        let pwd = getpwuid(uid);
+        if pwd.is_null() {
+            anyhow::bail!("Failed to get user");
+        }
+        let username = CStr::from_ptr((*pwd).pw_name)
+            .to_string_lossy()
+            .into_owned();
+        Ok(username)
+    }
+}
+
 pub fn home_path() -> String {
     env::var("HOME").unwrap_or_else(|_| {
-        panic!("Unable to find home directory.");
+        let username = env::var("USER")
+            .or_else(|_| env::var("LOGNAME"))
+            .or_else(|_| get_username().map_err(|_| ()))
+            .unwrap_or_else(|_| panic!("Couldn't determine username. Please fix the system."));
+        format!("home/{}", username)
     })
 }
 
