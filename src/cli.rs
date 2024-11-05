@@ -175,4 +175,8 @@ pub enum Commands {
     /// Health check
     #[clap(name = "health")]
     Health,
+
+    /// Generate config
+    #[clap(name = "defconfig")]
+    DefConfig,
 }
