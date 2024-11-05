@@ -151,7 +151,7 @@ impl PackageRegistry {
 
             let formatted_name = format!(
                 "{} ({}#{})",
-                package.bin_name.clone().color(Color::BrightGreen),
+                package.pkg_name.clone().color(Color::BrightGreen),
                 package.clone().full_name('/').color(Color::BrightCyan),
                 pkg.collection.clone().color(Color::BrightRed)
             );
@@ -161,7 +161,10 @@ impl PackageRegistry {
                     "Description",
                     package.description.clone().color(Color::BrightYellow),
                 ),
-                ("Homepage", package.web_url.clone().color(Color::BrightBlue)),
+                (
+                    "Homepage",
+                    package.homepage.clone().color(Color::BrightBlue),
+                ),
                 ("Source", package.src_url.clone().color(Color::BrightBlue)),
                 (
                     "Version",
@@ -278,7 +281,7 @@ impl PackageRegistry {
                 install_prefix.color(Color::Red),
                 resolved_package.collection.color(Color::BrightGreen),
                 package.full_name('/').color(Color::Blue),
-                package.name.color(Color::Blue),
+                package.pkg.color(Color::Blue),
                 package.version.color(Color::Green),
                 package.size.color(Color::Magenta)
             );
@@ -335,7 +338,7 @@ impl PackageRegistry {
 pub fn select_single_package(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
     info!(
         "Multiple packages available for {}",
-        packages[0].package.name.clone().color(Color::Blue)
+        packages[0].package.pkg.clone().color(Color::Blue)
     );
     for (i, package) in packages.iter().enumerate() {
         println!(

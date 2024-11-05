@@ -49,7 +49,7 @@ impl MetadataFetcher {
             .map(|(key, packages)| {
                 let package_map: HashMap<String, Vec<Package>> =
                     packages.iter().fold(HashMap::new(), |mut acc, package| {
-                        acc.entry(package.name.clone()).or_default().push(Package {
+                        acc.entry(package.pkg.clone()).or_default().push(Package {
                             family: package
                                 .download_url
                                 .split('/')

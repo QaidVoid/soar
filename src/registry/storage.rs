@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
-    io::Write,
+    fs::File,
+    io::BufReader,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -21,10 +22,13 @@ use crate::{
         color::{Color, ColorExt},
         config::CONFIG,
         constant::CACHE_PATH,
-        util::format_bytes,
+        file::{get_file_type, FileType},
+        util::{build_path, format_bytes, interactive_ask, AskType},
     },
     error,
-    package::{parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage},
+    package::{
+        ask_package_info, parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage,
+    },
     registry::installed::InstalledPackages,
     warn,
 };
@@ -80,7 +84,30 @@ impl PackageStorage {
     ) -> Result<()> {
         let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
             .iter()
-            .map(|package_name| self.resolve_package(package_name, yes))
+            .map(|package_name| {
+                if let Ok(package) = self.resolve_package(package_name, yes) {
+                    Ok(package)
+                } else {
+                    // check if a local package is provided instead
+                    let package_path = build_path(package_name)?;
+                    if package_path.is_file() {
+                        let realpath = if package_path.is_symlink() {
+                            package_path.read_link()?
+                        } else {
+                            package_path
+                        };
+                        let file = File::open(&realpath)?;
+                        let mut buf_reader = BufReader::new(&file);
+                        if get_file_type(&mut buf_reader) != FileType::Unknown {
+                            let package_name = realpath.file_name().unwrap().to_string_lossy();
+                            let size = file.metadata()?.len();
+                            let package = ask_package_info(&package_name, &realpath, size)?;
+                            return Ok(package);
+                        };
+                    };
+                    Err(anyhow::anyhow!("Package {} not found.", package_name))
+                }
+            })
             .collect();
         let resolved_packages = resolved_packages?;
 
@@ -150,7 +177,6 @@ impl PackageStorage {
                             portable_home,
                             portable_config,
                             multi_progress,
-                            yes,
                         )
                         .await
                     {
@@ -179,7 +205,6 @@ impl PackageStorage {
                         portable_home.clone(),
                         portable_config.clone(),
                         multi_progress.clone(),
-                        yes,
                     )
                     .await
                 {
@@ -300,7 +325,7 @@ impl PackageStorage {
                     .flat_map(|(collection_key, map)| {
                         map.get(pkg_name).into_iter().flat_map(|pkgs| {
                             pkgs.iter().filter_map(|pkg| {
-                                if pkg.name == pkg_name
+                                if pkg.pkg == pkg_name
                                     && (query.family.is_none()
                                         || pkg.family.as_ref() == query.family.as_ref())
                                 {
@@ -342,9 +367,9 @@ impl PackageStorage {
                         packages.iter().filter_map(|pkg| {
                             let mut score = 0;
                             let found_pkg_name = if case_sensitive {
-                                pkg.name.clone()
+                                pkg.pkg.clone()
                             } else {
-                                pkg.name.to_lowercase()
+                                pkg.pkg.to_lowercase()
                             };
 
                             if found_pkg_name == pkg_name {
@@ -418,16 +443,11 @@ impl PackageStorage {
 
         let content_length = response.content_length().unwrap_or_default();
         if content_length > 1_048_576 {
-            warn!(
+            let response = interactive_ask(&format!(
                 "The build {} file is too large ({}). Do you really want to download and view it (y/N)? ",
                 inspect_type,
                 format_bytes(content_length).color(Color::Magenta)
-            );
-
-            std::io::stdout().flush()?;
-            let mut response = String::new();
-
-            std::io::stdin().read_line(&mut response)?;
+            ), AskType::Warn)?;
 
             if !response.trim().eq_ignore_ascii_case("y") {
                 return Err(anyhow::anyhow!(""));
@@ -465,13 +485,13 @@ impl PackageStorage {
             &[]
         };
         let runner = if let Ok(resolved_pkg) = self.resolve_package(package_name, yes) {
-            let package_path = CACHE_PATH.join(&resolved_pkg.package.bin_name);
+            let package_path = CACHE_PATH.join(&resolved_pkg.package.pkg_name);
             Runner::new(&resolved_pkg, package_path, args)
         } else {
             let query = parse_package_query(package_name);
             let package_path = CACHE_PATH.join(&query.name);
             let mut resolved_pkg = ResolvedPackage::default();
-            resolved_pkg.package.name = query.name;
+            resolved_pkg.package.pkg = query.name;
             resolved_pkg.package.family = query.family;
 
             // TODO: check all the repo for package instead of choosing the first

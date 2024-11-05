@@ -91,7 +91,6 @@ impl Updater {
                         None,
                         None,
                         multi_progress.clone(),
-                        true,
                     )
                     .await?;
                 update_count += 1;
