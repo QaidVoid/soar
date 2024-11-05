@@ -1,10 +1,10 @@
 # Soar Package Manager
 
-Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
-
 [![Crates.io](https://img.shields.io/crates/v/soar-cli)](https://crates.io/crates/soar-cli)
 [![Documentation](https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue)](https://soar.qaidvoid.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
 
 <p align="center">
     <img src="icons/hicolor/scalable/apps/soar.svg" alt="soar" width="256"/>
@@ -23,21 +23,22 @@ Installation guide can be found [here](https://soar.qaidvoid.dev/installation.ht
 Usage: soar [OPTIONS] <COMMAND>
 
 Commands:
-  install   Install packages [aliases: i, add]
-  search    Search package [aliases: s, find]
-  query     Query package info [aliases: Q]
-  remove    Remove packages [aliases: r, del]
-  sync      Sync with remote metadata [aliases: S, fetch]
-  update    Update packages [aliases: u, upgrade]
-  info      Show info about installed packages [aliases: list-installed]
-  list      List all available packages [aliases: ls]
-  log       Inspect package build log
-  inspect   Inspect package build script
-  run       Run packages without installing to PATH [aliases: exec, execute]
-  use       Use package from different family
-  download  Download arbitrary files [aliases: dl]
-  health    Health check
-  help      Print this message or the help of the given subcommand(s)
+  install    Install packages [aliases: i, add]
+  search     Search package [aliases: s, find]
+  query      Query package info [aliases: Q]
+  remove     Remove packages [aliases: r, del]
+  sync       Sync with remote metadata [aliases: S, fetch]
+  update     Update packages [aliases: u, upgrade]
+  info       Show info about installed packages [aliases: list-installed]
+  list       List all available packages [aliases: ls]
+  log        Inspect package build log
+  inspect    Inspect package build script
+  run        Run packages without installing to PATH [aliases: exec, execute]
+  use        Use package from different family
+  download   Download arbitrary files [aliases: dl]
+  health     Health check
+  defconfig  Generate default config
+  help       Print this message or the help of the given subcommand(s)
 
 Options:
   -v, --verbose  Unimplemented

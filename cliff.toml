@@ -6,7 +6,7 @@
 # See documentation for more information on available options.
 
 [remote.github]
-owner = "QaidVoid"
+owner = "pkgforge"
 repo = "soar"
 
 [changelog]
@@ -73,7 +73,7 @@ footer = """
 trim = true
 # postprocessors
 postprocessors = [
-  { pattern = '<REPO>', replace = "https://github.com/QaidVoid/soar" }, # replace repository URL
+  { pattern = '<REPO>', replace = "https://github.com/pkgforge/soar" }, # replace repository URL
 ]
 
 [git]
