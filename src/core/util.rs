@@ -385,7 +385,7 @@ pub fn interactive_ask(ques: &str, ask_type: AskType) -> Result<String> {
     if ask_type == AskType::Warn {
         warn!("{ques}");
     } else {
-        println!("{ques}");
+        print!("{ques}");
     }
 
     std::io::stdout().flush()?;

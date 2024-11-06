@@ -10,7 +10,7 @@ use crate::{
     },
     package::appimage::remove_applinks,
     registry::installed::{InstalledPackage, InstalledPackages},
-    success,
+    successln,
 };
 
 pub struct Remover {
@@ -34,7 +34,7 @@ impl Remover {
         self.remove_package_path(&install_dir).await?;
         installed_packages.unregister_package(&self.package).await?;
 
-        success!(
+        successln!(
             "Package {} removed successfully.",
             package.full_name('/').color(Color::Blue)
         );

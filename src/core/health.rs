@@ -9,7 +9,7 @@ use crate::{
         color::{Color, ColorExt},
         constant::CAP_MKNOD,
     },
-    success, warn,
+    successln, warnln,
 };
 
 use super::constant::CAP_SYS_ADMIN;
@@ -64,11 +64,11 @@ pub async fn check_health() {
 
     println!("{0}  USER NAMESPACE CHECK {0}", "☵".repeat(4));
     for error in &errors {
-        warn!("{}", error);
+        warnln!("{}", error);
     }
 
     if errors.is_empty() {
-        success!("User namespace checked successfully.")
+        successln!("User namespace checked successfully.")
     } else {
         println!(
             "{} {}",
@@ -168,13 +168,13 @@ async fn check_fusermount() {
     }
 
     if !error.is_empty() {
-        warn!(
+        warnln!(
             "{}\n{} {}",
             error,
             "More info at:".color(Color::Cyan),
             "https://l.ajam.dev/fuse".color(Color::Blue)
         );
     } else {
-        success!("Fuse checked successfully.");
+        successln!("Fuse checked successfully.");
     }
 }

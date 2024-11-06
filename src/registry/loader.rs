@@ -6,7 +6,7 @@ use crate::{
         color::{Color, ColorExt},
         config::Repository,
     },
-    warn,
+    warnln,
 };
 
 use super::fetcher::MetadataFetcher;
@@ -27,7 +27,7 @@ impl MetadataLoader {
                 .with_file_name(format!("{}.remote.bsum", repo.name));
             let local_checksum = fs::read(&checksum_path).await.unwrap_or_default();
             if checksum != local_checksum {
-                warn!("Local registry is outdated. Refetching...");
+                warnln!("Local registry is outdated. Refetching...");
                 let content = fetcher.execute(repo).await;
                 fs::write(checksum_path, &checksum).await?;
                 return content;

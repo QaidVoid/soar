@@ -19,7 +19,7 @@ use crate::{
     error,
     package::parse_package_query,
     registry::{select_single_package, PackageRegistry},
-    success,
+    successln,
 };
 
 fn extract_filename(url: &str) -> String {
@@ -117,7 +117,7 @@ async fn download(url: &str, output: Option<String>) -> Result<()> {
         fs::set_permissions(&output_path, Permissions::from_mode(0o755)).await?;
     }
 
-    success!("Downloaded {}", output_path.display().color(Color::Blue));
+    successln!("Downloaded {}", output_path.display().color(Color::Blue));
 
     Ok(())
 }

@@ -16,11 +16,11 @@ use crate::{
         config::CONFIG,
         util::{get_terminal_width, wrap_text},
     },
-    error, info,
+    error, infoln,
     package::{
         image::get_package_image_string, parse_package_query, update::Updater, ResolvedPackage,
     },
-    success,
+    successln,
 };
 
 mod fetcher;
@@ -304,7 +304,7 @@ impl PackageRegistry {
         drop(installed_guard);
         match result {
             Ok(_) => {
-                success!(
+                successln!(
                     "{} is linked to binary path",
                     package_name.color(Color::Blue)
                 );
@@ -336,7 +336,7 @@ impl PackageRegistry {
 }
 
 pub fn select_single_package(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
-    info!(
+    infoln!(
         "Multiple packages available for {}",
         packages[0].package.pkg.clone().color(Color::Blue)
     );

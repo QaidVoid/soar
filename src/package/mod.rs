@@ -127,7 +127,16 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
 
 #[inline]
 pub fn ask_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPackage> {
-    let bin_name = interactive_ask("Binary Name:", AskType::Normal)?;
+    let bin_name = loop {
+        let bin_name = interactive_ask("Binary Name: ", AskType::Normal)?;
+        if bin_name.is_empty() {
+            eprintln!("Binary name can't be empty.");
+        } else if !bin_name.chars().all(|c| c.is_alphanumeric()) {
+            eprintln!("Binary name must only contain letters and numbers.");
+        } else {
+            break bin_name;
+        }
+    };
 
     let package = Package {
         pkg: name.to_owned(),

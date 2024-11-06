@@ -9,7 +9,7 @@ use crate::{
         color::{Color, ColorExt},
         util::{format_bytes, validate_checksum},
     },
-    error, info, warn,
+    error, infoln, warnln,
 };
 
 use super::ResolvedPackage;
@@ -43,7 +43,7 @@ impl Runner {
                     self.install_path.to_string_lossy().color(Color::Blue)
                 ));
             } else {
-                info!(
+                infoln!(
                     "Found existing cache for {}",
                     package_name.color(Color::Blue)
                 );
@@ -108,7 +108,7 @@ impl Runner {
         }
 
         if package.bsum == "null" {
-            warn!(
+            warnln!(
                 "Missing checksum for {}. Installing anyway.",
                 package.full_name('/').color(Color::Blue)
             );

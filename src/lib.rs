@@ -27,7 +27,7 @@ pub async fn init() -> Result<()> {
 
     let path_env = env::var("PATH")?;
     if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
-        warn!(
+        warnln!(
             "{} is not in {1}. Please add it to {1} to use installed binaries.",
             &*BIN_PATH.to_string_lossy().color(Color::Blue),
             "PATH".color(Color::BrightGreen).bold()

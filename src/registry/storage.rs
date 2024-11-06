@@ -30,7 +30,7 @@ use crate::{
         ask_package_info, parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage,
     },
     registry::installed::InstalledPackages,
-    warn,
+    warnln,
 };
 
 use super::select_single_package;
@@ -126,7 +126,7 @@ impl PackageStorage {
             .into_iter()
             .filter_map(|(package, is_installed)| {
                 if is_installed {
-                    warn!(
+                    warnln!(
                         "{} is already installed - {}",
                         package.package.full_name('/'),
                         if force { "reinstalling" } else { "skipping" }

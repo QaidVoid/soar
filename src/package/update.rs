@@ -7,7 +7,7 @@ use crate::{
     core::color::{Color, ColorExt},
     error,
     registry::PackageRegistry,
-    success,
+    successln,
 };
 
 use super::{parse_package_query, PackageQuery, ResolvedPackage};
@@ -98,7 +98,7 @@ impl Updater {
             }
 
             total_progress_bar.finish_and_clear();
-            success!(
+            successln!(
                 "{} packages updated.",
                 update_count.color(Color::BrightMagenta)
             );
