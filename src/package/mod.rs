@@ -108,6 +108,7 @@ pub struct PackageQuery {
 }
 
 pub fn parse_package_query(query: &str) -> PackageQuery {
+    let query = query.to_lowercase();
     let (base_query, collection) = query
         .rsplit_once('#')
         .map(|(n, r)| (n.to_owned(), (!r.is_empty()).then(|| r.to_lowercase())))
@@ -131,8 +132,19 @@ pub fn ask_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPa
         let bin_name = interactive_ask("Binary Name: ", AskType::Normal)?;
         if bin_name.is_empty() {
             eprintln!("Binary name can't be empty.");
-        } else if !bin_name.chars().all(|c| c.is_alphanumeric()) {
-            eprintln!("Binary name must only contain letters and numbers.");
+        } else if !bin_name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+        {
+            eprintln!(
+                "Binary name must only contain letters, numbers, hyphens (-), or underscores (_)."
+            );
+        } else if bin_name.starts_with('-')
+            || bin_name.starts_with('_')
+            || bin_name.ends_with('-')
+            || bin_name.ends_with('_')
+        {
+            eprintln!("Binary name can't start or end with a hyphen (-) or underscore (_).");
         } else {
             break bin_name;
         }

@@ -111,27 +111,43 @@ impl PackageRegistry {
             .await
     }
 
-    pub async fn search(&self, package_name: &str, case_sensitive: bool) -> Result<()> {
+    pub async fn search(
+        &self,
+        package_name: &str,
+        case_sensitive: bool,
+        limit: Option<usize>,
+    ) -> Result<()> {
+        let limit = limit.unwrap_or(CONFIG.search_limit.unwrap_or(20));
         let installed_guard = self.installed_packages.lock().await;
         let result = self.storage.search(package_name, case_sensitive).await;
 
         if result.is_empty() {
             Err(anyhow::anyhow!("No packages found"))
         } else {
-            result.iter().for_each(|pkg| {
+            let displayed_results = result.iter().take(limit).collect::<Vec<_>>();
+            displayed_results.iter().for_each(|pkg| {
                 let installed = if installed_guard.is_installed(pkg) {
                     "+"
                 } else {
                     "-"
                 };
                 println!(
-                    "[{}] [{}] {}: {}",
+                    "[{}] [{}] {}: {} ({})",
                     installed,
                     pkg.collection.clone().color(Color::BrightGreen),
-                    pkg.package.full_name('/').color(Color::Blue),
+                    pkg.package.full_name('/').color(Color::BrightBlue),
                     pkg.package.description,
+                    pkg.package.size.clone().color(Color::BrightMagenta)
                 );
             });
+
+            if result.len() > limit {
+                println!(
+                    "\x1b[5mShowing {} of {} results\x1b[0m",
+                    limit,
+                    result.len()
+                );
+            }
             Ok(())
         }
     }

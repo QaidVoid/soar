@@ -22,6 +22,9 @@ pub struct Config {
 
     /// Limit the number of parallel downloads
     pub parallel_limit: Option<u32>,
+
+    /// Limit the number of search results to display
+    pub search_limit: Option<usize>,
 }
 
 /// Struct representing a repository configuration.
@@ -90,6 +93,7 @@ impl Default for Config {
             }],
             parallel: Some(true),
             parallel_limit: Some(4),
+            search_limit: Some(20),
         }
     }
 }

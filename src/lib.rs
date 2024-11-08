@@ -83,8 +83,9 @@ pub async fn init() -> Result<()> {
         Commands::Search {
             query,
             case_sensitive,
+            limit,
         } => {
-            registry.search(&query, case_sensitive).await?;
+            registry.search(&query, case_sensitive, limit).await?;
         }
         Commands::Query { query } => {
             registry.query(&query).await?;

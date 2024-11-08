@@ -366,15 +366,17 @@ impl PackageStorage {
                     .flat_map(|(_, packages)| {
                         packages.iter().filter_map(|pkg| {
                             let mut score = 0;
-                            let found_pkg_name = if case_sensitive {
-                                pkg.pkg.clone()
+                            let (found_pkg_name, found_pkg_description) = if case_sensitive {
+                                (pkg.pkg.clone(), pkg.description.clone())
                             } else {
-                                pkg.pkg.to_lowercase()
+                                (pkg.pkg.to_lowercase(), pkg.description.to_lowercase())
                             };
 
                             if found_pkg_name == pkg_name {
-                                score += 2;
+                                score += 5;
                             } else if found_pkg_name.contains(&pkg_name) {
+                                score += 3;
+                            } else if found_pkg_description.contains(&pkg_name) {
                                 score += 1;
                             } else {
                                 return None;

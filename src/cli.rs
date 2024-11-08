@@ -61,8 +61,12 @@ pub enum Commands {
         query: String,
 
         /// Case sensitive search
-        #[arg(required = false, long)]
+        #[arg(required = false, long, alias = "exact")]
         case_sensitive: bool,
+
+        /// Limit number of result
+        #[arg(required = false, long)]
+        limit: Option<usize>,
     },
 
     /// Query package info

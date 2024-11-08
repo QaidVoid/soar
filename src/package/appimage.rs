@@ -36,7 +36,7 @@ const SUPPORTED_DIMENSIONS: &[(u32, u32)] = &[
     (512, 512),
 ];
 
-async fn find_offset(file: &mut BufReader<File>) -> Result<u64> {
+fn find_offset(file: &mut BufReader<File>) -> Result<u64> {
     let mut magic = [0_u8; 4];
     // Little-Endian v4.0
     let kind = Kind::from_target("le_v4_0").unwrap();
@@ -144,7 +144,7 @@ pub async fn integrate_appimage(
     package: &Package,
     file_path: &Path,
 ) -> Result<bool> {
-    let offset = find_offset(file).await?;
+    let offset = find_offset(file)?;
     let squashfs = FilesystemReader::from_reader_with_offset(file, offset)?;
 
     let home_data = home_data_path();
