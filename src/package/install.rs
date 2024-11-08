@@ -317,8 +317,12 @@ impl Installer {
         let symlink_path = &BIN_PATH.join(&package.pkg_name);
         if symlink_path.exists() {
             if let Ok(link) = symlink_path.read_link() {
+                if *install_path == link {
+                    return Ok(())
+                }
                 if let Ok(parent) = link.strip_prefix(&*PACKAGES_PATH) {
-                    let package_name = &parent.parent().unwrap().to_string_lossy()[9..];
+                    let package_path = parent.parent().unwrap().to_string_lossy();
+                    let package_name = &package_path[..8];
 
                     if package_name == package.full_name('-') {
                         fs::remove_dir_all(link.parent().unwrap()).await?;

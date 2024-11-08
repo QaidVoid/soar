@@ -325,7 +325,7 @@ impl PackageStorage {
                     .flat_map(|(collection_key, map)| {
                         map.get(pkg_name).into_iter().flat_map(|pkgs| {
                             pkgs.iter().filter_map(|pkg| {
-                                if pkg.pkg == pkg_name
+                                if pkg.pkg.to_lowercase() == pkg_name
                                     && (query.family.is_none()
                                         || pkg.family.as_ref() == query.family.as_ref())
                                 {
