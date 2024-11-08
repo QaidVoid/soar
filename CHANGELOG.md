@@ -1,4 +1,16 @@
 
+## [0.4.3](https://github.com/pkgforge/soar/compare/v0.4.2..v0.4.3) - 2024-11-08
+
+### 🐛 Bug Fixes
+
+- *(install)* Fix package case handling & replacement - ([5af3cfc](https://github.com/pkgforge/soar/commit/5af3cfc43a63ee1201baebd24c628a5f5246cf4d))
+- *(install)* Add constraints to local installs binary name - ([bfe004f](https://github.com/pkgforge/soar/commit/bfe004fdf7e8d6fc3fc1be27818ad9cc4a892978))
+
+### 🚜 Refactor
+
+- *(search)* Add description search and limit - ([4bbe1f3](https://github.com/pkgforge/soar/commit/4bbe1f397a157734218c2df8a9e88e3a4a1187ad))
+
+
 ## [0.4.2](https://github.com/pkgforge/soar/compare/v0.4.1..v0.4.2) - 2024-11-05
 
 ### ⛰️  Features
@@ -116,6 +128,9 @@
 - *(workflow)* Run nightly on every commit - ([42ddf90](https://github.com/pkgforge/soar/commit/42ddf90857a1c9a0ff264dbac45e1fda114c0935))
 - *(workflow)* Add nightly workflow - ([f697a5f](https://github.com/pkgforge/soar/commit/f697a5f86adc4c75822e0c8fc3b3a0e7dacd9479))
 
+## New Contributors ❤️
+
+* @dependabot[bot] made their first contribution in [#1](https://github.com/pkgforge/soar/pull/1)
 
 ## [0.2.0](https://github.com/pkgforge/soar/compare/v0.1.0..v0.2.0) - 2024-10-11
 
