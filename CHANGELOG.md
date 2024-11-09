@@ -1,4 +1,20 @@
 
+## [0.4.4](https://github.com/pkgforge/soar/compare/v0.4.3..0.4.4) - 2024-11-09
+
+### ⛰️  Features
+
+- *(env)* Add environment variables support - ([426c380](https://github.com/pkgforge/soar/commit/426c3803a35801f94e71851ed9ba5773b5c6ff2f))
+- *(log)* Add tracing, verbosity, json output - ([424b0e3](https://github.com/pkgforge/soar/commit/424b0e35eb36a4ef3779bb4c69c054f4137130a4))
+
+### 🐛 Bug Fixes
+
+- *(log)* Write info to stdout - ([295d6f7](https://github.com/pkgforge/soar/commit/295d6f7801af0a7714bf7b7409c602586a6885b9))
+
+### 🚜 Refactor
+
+- *(install)* Use filename as binary name for local install - ([ff004ae](https://github.com/pkgforge/soar/commit/ff004aed99e972bc7f0812354c54d4498e413bc6))
+
+
 ## [0.4.3](https://github.com/pkgforge/soar/compare/v0.4.2..v0.4.3) - 2024-11-08
 
 ### 🐛 Bug Fixes

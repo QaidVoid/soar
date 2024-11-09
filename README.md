@@ -15,7 +15,7 @@ Soar is a fast Linux package manager that doesn't suck. Works with static binari
 - [Desktop Integration](https://soar.qaidvoid.dev/#desktop-integration)
 
 ## 🔧 Installation
-Installation guide can be found [here](https://soar.qaidvoid.dev/installation.html)
+Installation guide can be found [here](https://soar.qaidvoid.dev/installation.html).
 
 ## 🎯 Usage
 
@@ -38,18 +38,21 @@ Commands:
   download   Download arbitrary files [aliases: dl]
   health     Health check
   defconfig  Generate default config
+  env        View env
   help       Print this message or the help of the given subcommand(s)
 
 Options:
-  -v, --verbose  Unimplemented
-  -h, --help     Print help
-  -V, --version  Print version
+  -v, --verbose...  
+  -q, --quiet       
+  -j, --json        
+  -h, --help        Print help
+  -V, --version     Print version
 ```
 
 ## ⚙️ Configuration
 
 Soar uses a JSON configuration file located at `~/.config/soar/config.json`.
-For configuration guide, follow [here](https://soar.qaidvoid.dev/configuration.html)
+For configuration guide, follow [here](https://soar.qaidvoid.dev/configuration.html).
 
 ## 🤝 Contributing
 
