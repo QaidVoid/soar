@@ -16,13 +16,7 @@ use install::Installer;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{
-    core::{
-        constant::PACKAGES_PATH,
-        util::{interactive_ask, AskType},
-    },
-    registry::installed::InstalledPackages,
-};
+use crate::{core::constant::PACKAGES_PATH, registry::installed::InstalledPackages};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct Package {
@@ -127,32 +121,10 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
 }
 
 #[inline]
-pub fn ask_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPackage> {
-    let bin_name = loop {
-        let bin_name = interactive_ask("Binary Name: ", AskType::Normal)?;
-        if bin_name.is_empty() {
-            eprintln!("Binary name can't be empty.");
-        } else if !bin_name
-            .chars()
-            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
-        {
-            eprintln!(
-                "Binary name must only contain letters, numbers, hyphens (-), or underscores (_)."
-            );
-        } else if bin_name.starts_with('-')
-            || bin_name.starts_with('_')
-            || bin_name.ends_with('-')
-            || bin_name.ends_with('_')
-        {
-            eprintln!("Binary name can't start or end with a hyphen (-) or underscore (_).");
-        } else {
-            break bin_name;
-        }
-    };
-
+pub fn gen_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPackage> {
     let package = Package {
         pkg: name.to_owned(),
-        pkg_name: bin_name,
+        pkg_name: name.to_owned(),
         size: size.to_string(),
         download_url: path.to_string_lossy().to_string(),
         ..Default::default()

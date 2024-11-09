@@ -1,6 +1,6 @@
 #![allow(clippy::needless_return)]
 
-use soar_cli::{core::color::Color, core::color::ColorExt, error, init};
+use soar_cli::{core::color::{Color, ColorExt}, errorln, init};
 
 #[tokio::main]
 async fn main() {
@@ -9,6 +9,6 @@ async fn main() {
     }
 
     if let Err(e) = init().await {
-        error!("{}", e);
+        errorln!("{}", e);
     }
 }

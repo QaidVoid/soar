@@ -27,7 +27,7 @@ use crate::{
     },
     error,
     package::{
-        ask_package_info, parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage,
+        gen_package_info, parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage,
     },
     registry::installed::InstalledPackages,
     warnln,
@@ -101,7 +101,7 @@ impl PackageStorage {
                         if get_file_type(&mut buf_reader) != FileType::Unknown {
                             let package_name = realpath.file_name().unwrap().to_string_lossy();
                             let size = file.metadata()?.len();
-                            let package = ask_package_info(&package_name, &realpath, size)?;
+                            let package = gen_package_info(&package_name, &realpath, size)?;
                             return Ok(package);
                         };
                     };
