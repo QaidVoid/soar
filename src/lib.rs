@@ -21,7 +21,7 @@ mod misc;
 mod package;
 mod registry;
 
-pub async fn init() -> Result<()> {
+async fn handle_cli() -> Result<()> {
     let args = Args::parse();
 
     setup_logging(&args);
@@ -79,8 +79,7 @@ pub async fn init() -> Result<()> {
                 .await?;
         }
         Commands::Sync => {
-            // nothing to do here
-            // it can be used to force sync without doing any other operation
+            registry.await?;
         }
         Commands::Remove { packages, exact } => {
             registry.await?.remove_packages(&packages, exact).await?;
@@ -137,4 +136,10 @@ pub async fn init() -> Result<()> {
     };
 
     Ok(())
+}
+
+pub async fn init() {
+    if let Err(e) = handle_cli().await {
+        error!("{}", e);
+    }
 }

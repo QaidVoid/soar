@@ -238,12 +238,14 @@ impl PackageRegistry {
 
             let pkg_image = get_package_image_string(&pkg).await;
 
-            let mut printable = Vec::new();
             let indent = 32;
 
-            printable.extend(pkg_image.as_bytes());
-            printable.extend(cursor::Up(15).to_string().as_bytes());
-            printable.extend(cursor::Right(indent).to_string().as_bytes());
+            info!(
+                "{}{}{}",
+                pkg_image,
+                cursor::Up(15),
+                cursor::Right(indent).to_string()
+            );
 
             data.iter().for_each(|(k, v)| {
                 let value = strip_ansi_escapes::strip_str(v);
@@ -256,13 +258,11 @@ impl PackageRegistry {
                         indent,
                     );
 
-                    printable.extend(format!("{}\n", line).as_bytes());
-                    printable.extend(cursor::Right(indent).to_string().as_bytes());
+                    info!("{}{}", cursor::Right(indent).to_string(), line);
                 }
             });
 
-            printable.extend(cursor::Down(1).to_string().as_bytes());
-            info!("{}", String::from_utf8(printable).unwrap());
+            info!("{}", cursor::Down(1).to_string());
         }
         Ok(())
     }

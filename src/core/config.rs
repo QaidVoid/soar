@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 use super::{
     constant::REGISTRY_PATH,
@@ -129,7 +130,7 @@ pub fn generate_default_config() -> Result<()> {
     let config_path = PathBuf::from(home_config).join("soar").join("config.json");
 
     if config_path.exists() {
-        eprintln!("Default config already exists. Not overriding it.");
+        error!("Default config already exists. Not overriding it.");
         std::process::exit(1);
     }
 

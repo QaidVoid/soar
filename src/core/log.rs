@@ -3,7 +3,7 @@ use tracing_subscriber::{
     fmt::{
         self,
         format::{FmtSpan, Writer},
-        FmtContext, FormatEvent, FormatFields,
+        FmtContext, FormatEvent, FormatFields, MakeWriter,
     },
     registry::LookupSpan,
 };
@@ -68,6 +68,36 @@ where
     }
 }
 
+struct WriterBuilder {
+    stdout: std::io::Stdout,
+    stderr: std::io::Stderr,
+}
+
+impl WriterBuilder {
+    fn new() -> Self {
+        Self {
+            stdout: std::io::stdout(),
+            stderr: std::io::stderr(),
+        }
+    }
+}
+
+impl<'a> MakeWriter<'a> for WriterBuilder {
+    type Writer = Box<dyn std::io::Write + 'a>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        Box::new(self.stdout.lock())
+    }
+
+    fn make_writer_for(&'a self, meta: &tracing::Metadata<'_>) -> Self::Writer {
+        if meta.level() == &tracing::Level::INFO {
+            Box::new(self.stdout.lock())
+        } else {
+            Box::new(self.stderr.lock())
+        }
+    }
+}
+
 pub fn setup_logging(args: &Args) {
     let filter_level = if args.quiet {
         Level::ERROR
@@ -87,7 +117,7 @@ pub fn setup_logging(args: &Args) {
         .with_file(false)
         .with_line_number(false)
         .with_span_events(FmtSpan::NONE)
-        .with_writer(std::io::stderr)
+        .with_writer(WriterBuilder::new())
         .compact()
         .without_time();
 
