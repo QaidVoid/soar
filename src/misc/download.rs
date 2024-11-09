@@ -39,7 +39,8 @@ struct GithubRelease {
     assets: Vec<GithubAsset>,
 }
 
-static GITHUB_URL_REGEX: &str = r"^(?:https?://)?(?:github(?:\.com)?[:/])([^/]+/[^/]+)$";
+static GITHUB_URL_REGEX: &str =
+    r"^(?i)(?:https?://)?(?:github(?:\.com)?[:/])([^/@]+/[^/@]+)(?:@([^/\s]+))?(?:/.*)?$";
 
 fn extract_filename(url: &str) -> String {
     Path::new(url)
@@ -180,17 +181,40 @@ pub async fn download_and_save(
                 "GitHub repository URL detected: {}",
                 link.color(Color::Blue)
             );
-            let captures = Regex::new(GITHUB_URL_REGEX).unwrap().captures(link);
-            if let Some(caps) = captures {
+            if let Some(caps) = re.captures(link) {
                 let user_repo = caps.get(1).unwrap().as_str();
+                let tag = caps.get(2).map(|tag| tag.as_str());
                 info!("Fetching releases for {}...", user_repo);
 
                 let releases = fetch_github_releases(user_repo).await?;
 
-                let Some(release) = releases.iter().find(|release| !release.prerelease) else {
-                    error!("No stable releases found for repository {}", user_repo);
+                let release = if let Some(tag_name) = tag {
+                    releases
+                        .iter()
+                        .find(|release| release.tag_name.starts_with(tag_name))
+                } else {
+                    releases.iter().find(|release| !release.prerelease)
+                };
+
+                let Some(release) = release else {
+                    error!(
+                        "No {} found for repository {}",
+                        tag.map(|t| format!("tag {}", t))
+                            .unwrap_or("stable release".to_owned()),
+                        user_repo
+                    );
                     continue;
                 };
+
+                info!(
+                    "Showing assets for {}{}",
+                    release.tag_name,
+                    if release.prerelease {
+                        " [prerelease]".color(Color::BrightRed)
+                    } else {
+                        " [stable]".color(Color::BrightCyan)
+                    }
+                );
 
                 let assets = &release.assets;
 
