@@ -16,7 +16,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-use crate::warn;
+use crate::{core::constant::ROOT_PATH, warn};
 
 use super::{
     color::{Color, ColorExt},
@@ -394,4 +394,25 @@ pub fn interactive_ask(ques: &str, ask_type: AskType) -> Result<String> {
     std::io::stdin().read_line(&mut response)?;
 
     Ok(response.trim().to_owned())
+}
+
+pub fn print_env() {
+    let root_path = ROOT_PATH
+        .is_symlink()
+        .then(|| ROOT_PATH.read_link().unwrap())
+        .unwrap_or(ROOT_PATH.to_path_buf());
+
+    let bin_path = BIN_PATH
+        .is_symlink()
+        .then(|| BIN_PATH.read_link().unwrap())
+        .unwrap_or(BIN_PATH.to_path_buf());
+
+    let cache_path = CACHE_PATH
+        .is_symlink()
+        .then(|| CACHE_PATH.read_link().unwrap())
+        .unwrap_or(CACHE_PATH.to_path_buf());
+
+    println!("SOAR_ROOT={}", root_path.display());
+    println!("SOAR_BIN={}", bin_path.display());
+    println!("SOAR_CACHE={}", cache_path.display());
 }

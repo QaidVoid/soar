@@ -1,4 +1,10 @@
-use std::{collections::HashMap, env::consts::ARCH, fs, path::PathBuf, sync::LazyLock};
+use std::{
+    collections::HashMap,
+    env::{self, consts::ARCH},
+    fs,
+    path::PathBuf,
+    sync::LazyLock,
+};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -12,7 +18,13 @@ use super::{
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     /// Path to the directory where app data is stored.
-    pub soar_path: String,
+    pub soar_root: String,
+
+    /// Path to the directory where cache is stored.
+    pub soar_cache: String,
+
+    /// Path to the directory where binary symlinks is stored.
+    pub soar_bin: String,
 
     /// A list of remote repositories to fetch packages from.
     pub repositories: Vec<Repository>,
@@ -83,8 +95,15 @@ impl Default for Config {
             ("pkg".to_owned(), format!("https://pkg.pkgforge.dev/{ARCH}")),
         ]);
 
+        let soar_root =
+            env::var("SOAR_ROOT").unwrap_or_else(|_| format!("{}/soar", home_data_path()));
+        let soar_bin = env::var("SOAR_BIN").unwrap_or_else(|_| format!("{}/bin", soar_root));
+        let soar_cache = env::var("SOAR_CACHE").unwrap_or_else(|_| format!("{}/cache", soar_root));
+
         Self {
-            soar_path: format!("{}/soar", home_data_path()),
+            soar_root,
+            soar_bin,
+            soar_cache,
             repositories: vec![Repository {
                 name: "pkgforge".to_owned(),
                 url: format!("https://bin.pkgforge.dev/{ARCH}"),

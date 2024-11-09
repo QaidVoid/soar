@@ -8,7 +8,7 @@ edition = "2021"
 repository = "https://github.com/pkgforge/soar"
 default-run = "soar"
 exclude = ["docs"]
-keywords = ["package", "package-manager", "portable", "binary", "static", "appimage", "linux"]
+keywords = ["package-manager", "portable", "binary", "appimage", "linux"]
 
 [[bin]]
 name = "soar"

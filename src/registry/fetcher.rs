@@ -49,16 +49,18 @@ impl MetadataFetcher {
             .map(|(key, packages)| {
                 let package_map: HashMap<String, Vec<Package>> =
                     packages.iter().fold(HashMap::new(), |mut acc, package| {
-                        acc.entry(package.pkg.to_lowercase().clone()).or_default().push(Package {
-                            family: package
-                                .download_url
-                                .split('/')
-                                .rev()
-                                .nth(1)
-                                .map(|v| v.to_owned())
-                                .filter(|v| v != ARCH),
-                            ..package.clone()
-                        });
+                        acc.entry(package.pkg.to_lowercase().clone())
+                            .or_default()
+                            .push(Package {
+                                family: package
+                                    .download_url
+                                    .split('/')
+                                    .rev()
+                                    .nth(1)
+                                    .map(|v| v.to_owned())
+                                    .filter(|v| v != ARCH),
+                                ..package.clone()
+                            });
                         acc
                     });
 
@@ -83,7 +85,7 @@ impl MetadataFetcher {
             )
         })?;
 
-        self.fetch_icons(repository).await?;
+        let _ = self.fetch_icons(repository).await;
 
         Ok(content)
     }

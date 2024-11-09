@@ -9,7 +9,7 @@ use core::{
     config::{self, generate_default_config},
     constant::BIN_PATH,
     health::check_health,
-    util::{cleanup, setup_required_paths},
+    util::{cleanup, print_env, setup_required_paths},
 };
 use std::{env, path::Path};
 
@@ -113,6 +113,9 @@ pub async fn init() -> Result<()> {
         }
         Commands::DefConfig => {
             generate_default_config()?;
+        }
+        Commands::Env => {
+            print_env();
         }
     };
 

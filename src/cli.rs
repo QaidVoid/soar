@@ -183,4 +183,8 @@ pub enum Commands {
     /// Generate default config
     #[clap(name = "defconfig")]
     DefConfig,
+
+    /// View env
+    #[clap(name = "env")]
+    Env,
 }

@@ -87,11 +87,11 @@ main() {
         # Get latest release URL
         echo "Downloading Soar..."
         if [[ "$SOAR_VERSION" == *"nightly"* ]]; then
-            RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/nightly/soar-nightly-$ARCH-linux"
+            RELEASE_URL="https://github.com/pkgforge/soar/releases/download/nightly/soar-nightly-$ARCH-linux"
         elif [[ "$SOAR_VERSION" == *"latest"* ]]; then
-            RELEASE_URL="https://github.com/QaidVoid/soar/releases/latest/download/soar-$ARCH-linux"
+            RELEASE_URL="https://github.com/pkgforge/soar/releases/latest/download/soar-$ARCH-linux"
         else
-            RELEASE_URL="https://github.com/QaidVoid/soar/releases/download/v$SOAR_VERSION/soar-$ARCH-linux"
+            RELEASE_URL="https://github.com/pkgforge/soar/releases/download/v$SOAR_VERSION/soar-$ARCH-linux"
         fi
         echo $RELEASE_URL
 

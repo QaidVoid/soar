@@ -318,7 +318,7 @@ impl Installer {
         if symlink_path.exists() {
             if let Ok(link) = symlink_path.read_link() {
                 if *install_path == link {
-                    return Ok(())
+                    return Ok(());
                 }
                 if let Ok(parent) = link.strip_prefix(&*PACKAGES_PATH) {
                     let package_path = parent.parent().unwrap().to_string_lossy();
