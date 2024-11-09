@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
@@ -13,9 +13,14 @@ use clap::{Parser, Subcommand};
     arg_required_else_help = true
 )]
 pub struct Args {
-    /// Unimplemented
+    #[arg(short = 'v', long, action = ArgAction::Count)]
+    pub verbose: u8,
+
     #[arg(short, long)]
-    pub verbose: bool,
+    pub quiet: bool,
+
+    #[arg(short, long)]
+    pub json: bool,
 
     #[clap(subcommand)]
     pub command: Commands,

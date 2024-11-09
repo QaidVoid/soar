@@ -15,6 +15,7 @@ use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt},
 };
+use tracing::info;
 
 use crate::{core::constant::ROOT_PATH, warn};
 
@@ -217,7 +218,7 @@ pub async fn download(url: &str, what: &str, silent: bool) -> Result<Vec<u8>> {
     let mut content = Vec::new();
 
     if !silent {
-        println!(
+        info!(
             "Fetching {} from {} [{}]",
             what.color(Color::Cyan),
             url.color(Color::Blue),
@@ -412,7 +413,7 @@ pub fn print_env() {
         .then(|| CACHE_PATH.read_link().unwrap())
         .unwrap_or(CACHE_PATH.to_path_buf());
 
-    println!("SOAR_ROOT={}", root_path.display());
-    println!("SOAR_BIN={}", bin_path.display());
-    println!("SOAR_CACHE={}", cache_path.display());
+    info!("SOAR_ROOT={}", root_path.display());
+    info!("SOAR_BIN={}", bin_path.display());
+    info!("SOAR_CACHE={}", cache_path.display());
 }

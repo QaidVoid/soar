@@ -16,6 +16,7 @@ use tokio::{
     fs,
     sync::{Mutex, Semaphore},
 };
+use tracing::{info, warn};
 
 use crate::{
     core::{
@@ -30,7 +31,6 @@ use crate::{
         gen_package_info, parse_package_query, run::Runner, Package, PackageQuery, ResolvedPackage,
     },
     registry::installed::InstalledPackages,
-    warnln,
 };
 
 use super::select_single_package;
@@ -81,6 +81,7 @@ impl PackageStorage {
         portable_home: Option<String>,
         portable_config: Option<String>,
         yes: bool,
+        quiet: bool,
     ) -> Result<()> {
         let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
             .iter()
@@ -126,7 +127,7 @@ impl PackageStorage {
             .into_iter()
             .filter_map(|(package, is_installed)| {
                 if is_installed {
-                    warnln!(
+                    warn!(
                         "{} is already installed - {}",
                         package.package.full_name('/'),
                         if force { "reinstalling" } else { "skipping" }
@@ -145,11 +146,15 @@ impl PackageStorage {
         let installed_count = Arc::new(AtomicU64::new(0));
 
         let multi_progress = Arc::new(MultiProgress::new());
-        let total_progress_bar =
-            multi_progress.add(ProgressBar::new(resolved_packages.len() as u64));
+        let total_progress_bar = if !quiet {
+            Some(multi_progress.add(ProgressBar::new(resolved_packages.len() as u64)))
+        } else {
+            None
+        };
 
-        total_progress_bar
-            .set_style(ProgressStyle::with_template("Installing {pos}/{len}").unwrap());
+        if let Some(pb) = &total_progress_bar {
+            pb.set_style(ProgressStyle::with_template("Installing {pos}/{len}").unwrap());
+        }
 
         if CONFIG.parallel.unwrap_or_default() {
             let semaphore = Arc::new(Semaphore::new(CONFIG.parallel_limit.unwrap_or(2) as usize));
@@ -165,7 +170,11 @@ impl PackageStorage {
                 let portable_home = portable_home.clone();
                 let portable_config = portable_config.clone();
                 let total_pb = total_progress_bar.clone();
-                let multi_progress = multi_progress.clone();
+                let multi_progress = if quiet {
+                    None
+                } else {
+                    Some(multi_progress.clone())
+                };
 
                 let handle = tokio::spawn(async move {
                     if let Err(e) = package
@@ -183,7 +192,9 @@ impl PackageStorage {
                         error!("{}", e);
                     } else {
                         ic.fetch_add(1, Ordering::Relaxed);
-                        total_pb.inc(1);
+                        if let Some(pb) = total_pb {
+                            pb.inc(1);
+                        }
                     };
                     drop(permit);
                 });
@@ -204,20 +215,28 @@ impl PackageStorage {
                         portable.clone(),
                         portable_home.clone(),
                         portable_config.clone(),
-                        multi_progress.clone(),
+                        if quiet {
+                            None
+                        } else {
+                            Some(multi_progress.clone())
+                        },
                     )
                     .await
                 {
                     error!("{}", e);
                 } else {
                     installed_count.fetch_add(1, Ordering::Relaxed);
-                    total_progress_bar.inc(1);
+                    if let Some(pb) = &total_progress_bar {
+                        pb.inc(1);
+                    }
                 };
             }
         }
 
-        total_progress_bar.finish_and_clear();
-        println!(
+        if let Some(pb) = total_progress_bar {
+            pb.finish_and_clear();
+        }
+        info!(
             "Installed {}/{} packages",
             installed_count.load(Ordering::Relaxed).color(Color::Blue),
             resolved_packages.len().color(Color::BrightBlue)
@@ -456,7 +475,7 @@ impl PackageStorage {
             }
         }
 
-        println!(
+        info!(
             "Fetching {} from {} [{}]",
             inspect_type,
             url.color(Color::Blue),
@@ -472,7 +491,7 @@ impl PackageStorage {
         }
         let output = String::from_utf8_lossy(&content).replace("\r", "\n");
 
-        println!("\n{}", output);
+        info!("\n{}", output);
 
         Ok(())
     }

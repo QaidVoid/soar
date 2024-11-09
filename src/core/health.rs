@@ -3,13 +3,11 @@ use std::{cmp::Ordering, future::Future, os::unix::fs::PermissionsExt, path::Pat
 use futures::future::join_all;
 use libc::{fork, unshare, waitpid, CLONE_NEWUSER, PR_CAPBSET_READ};
 use tokio::fs;
+use tracing::{info, warn};
 
-use crate::{
-    core::{
-        color::{Color, ColorExt},
-        constant::CAP_MKNOD,
-    },
-    successln, warnln,
+use crate::core::{
+    color::{Color, ColorExt},
+    constant::CAP_MKNOD,
 };
 
 use super::constant::CAP_SYS_ADMIN;
@@ -49,7 +47,7 @@ pub async fn check_health() {
         Box::pin(check_capabilities()),
     ];
 
-    println!("{0}  FUSE CHECK {0}", "☵".repeat(4));
+    info!("{0}  FUSE CHECK {0}", "☵".repeat(4));
     check_fusermount().await;
 
     let results = join_all(checks).await;
@@ -60,17 +58,15 @@ pub async fn check_health() {
         }
     });
 
-    println!();
-
-    println!("{0}  USER NAMESPACE CHECK {0}", "☵".repeat(4));
+    info!("\n{0}  USER NAMESPACE CHECK {0}", "☵".repeat(4));
     for error in &errors {
-        warnln!("{}", error);
+        warn!("{}", error);
     }
 
     if errors.is_empty() {
-        successln!("User namespace checked successfully.")
+        info!("User namespace checked successfully.")
     } else {
-        println!(
+        info!(
             "{} {}",
             "More info at:".color(Color::Cyan),
             "https://l.ajam.dev/namespace".color(Color::Blue)
@@ -168,13 +164,13 @@ async fn check_fusermount() {
     }
 
     if !error.is_empty() {
-        warnln!(
+        warn!(
             "{}\n{} {}",
             error,
             "More info at:".color(Color::Cyan),
             "https://l.ajam.dev/fuse".color(Color::Blue)
         );
     } else {
-        successln!("Fuse checked successfully.");
+        info!("Fuse checked successfully.");
     }
 }

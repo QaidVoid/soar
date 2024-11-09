@@ -3,12 +3,14 @@ use clap::Parser;
 use cli::{Args, Commands};
 use misc::download::download_and_save;
 use registry::PackageRegistry;
+use tracing::{debug, error, trace, warn};
 
 use core::{
     color::{Color, ColorExt},
     config::{self, generate_default_config},
     constant::BIN_PATH,
     health::check_health,
+    log::setup_logging,
     util::{cleanup, print_env, setup_required_paths},
 };
 use std::{env, path::Path};
@@ -22,20 +24,27 @@ mod registry;
 pub async fn init() -> Result<()> {
     let args = Args::parse();
 
+    setup_logging(&args);
+
+    debug!("Initializing soar");
     config::init();
+
+    debug!("Setting up paths");
     setup_required_paths().await?;
 
     let path_env = env::var("PATH")?;
     if !path_env.split(':').any(|p| Path::new(p) == *BIN_PATH) {
-        warnln!(
+        warn!(
             "{} is not in {1}. Please add it to {1} to use installed binaries.",
             &*BIN_PATH.to_string_lossy().color(Color::Blue),
             "PATH".color(Color::BrightGreen).bold()
         );
     }
 
-    let registry = PackageRegistry::new().await?;
+    debug!("Initializing package registry");
+    let registry = PackageRegistry::new();
 
+    trace!("Running cleanup");
     let _ = cleanup().await;
 
     match args.command {
@@ -57,6 +66,7 @@ pub async fn init() -> Result<()> {
             let portable_config = portable_config.map(|p| p.unwrap_or_default());
 
             registry
+                .await?
                 .install_packages(
                     &packages,
                     force,
@@ -64,6 +74,7 @@ pub async fn init() -> Result<()> {
                     portable_home,
                     portable_config,
                     yes,
+                    args.quiet,
                 )
                 .await?;
         }
@@ -72,41 +83,47 @@ pub async fn init() -> Result<()> {
             // it can be used to force sync without doing any other operation
         }
         Commands::Remove { packages, exact } => {
-            registry.remove_packages(&packages, exact).await?;
+            registry.await?.remove_packages(&packages, exact).await?;
         }
         Commands::Update { packages } => {
-            registry.update(packages.as_deref()).await?;
+            registry
+                .await?
+                .update(packages.as_deref(), args.quiet)
+                .await?;
         }
         Commands::ListInstalledPackages { packages } => {
-            registry.info(packages.as_deref()).await?;
+            registry.await?.info(packages.as_deref()).await?;
         }
         Commands::Search {
             query,
             case_sensitive,
             limit,
         } => {
-            registry.search(&query, case_sensitive, limit).await?;
+            registry
+                .await?
+                .search(&query, case_sensitive, limit)
+                .await?;
         }
         Commands::Query { query } => {
-            registry.query(&query).await?;
+            registry.await?.query(&query).await?;
         }
         Commands::ListPackages { collection } => {
-            registry.list(collection.as_deref()).await?;
+            registry.await?.list(collection.as_deref()).await?;
         }
         Commands::Inspect { package } => {
-            registry.inspect(&package, "script").await?;
+            registry.await?.inspect(&package, "script").await?;
         }
         Commands::Log { package } => {
-            registry.inspect(&package, "log").await?;
+            registry.await?.inspect(&package, "log").await?;
         }
         Commands::Run { command, yes } => {
-            registry.run(command.as_ref(), yes).await?;
+            registry.await?.run(command.as_ref(), yes).await?;
         }
         Commands::Use { package } => {
-            registry.use_package(&package).await?;
+            registry.await?.use_package(&package, args.quiet).await?;
         }
         Commands::Download { links, yes, output } => {
-            download_and_save(registry, links.as_ref(), yes, output).await?;
+            download_and_save(registry.await?, links.as_ref(), yes, output).await?;
         }
         Commands::Health => {
             check_health().await;

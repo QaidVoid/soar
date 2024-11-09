@@ -9,6 +9,7 @@ use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
 };
+use tracing::{error, info};
 
 use crate::{
     core::{
@@ -16,10 +17,8 @@ use crate::{
         constant::ELF_MAGIC_BYTES,
         util::{download_progress_style, format_bytes},
     },
-    error,
     package::parse_package_query,
     registry::{select_single_package, PackageRegistry},
-    successln,
 };
 
 fn extract_filename(url: &str) -> String {
@@ -80,7 +79,7 @@ async fn download(url: &str, output: Option<String>) -> Result<()> {
 
     let temp_path = format!("{}.tmp", output_path.display());
 
-    println!(
+    info!(
         "Downloading file from {} [{}]",
         url.color(Color::Blue),
         format_bytes(response.content_length().unwrap_or_default()).color(Color::Yellow)
@@ -117,7 +116,7 @@ async fn download(url: &str, output: Option<String>) -> Result<()> {
         fs::set_permissions(&output_path, Permissions::from_mode(0o755)).await?;
     }
 
-    successln!("Downloaded {}", output_path.display().color(Color::Blue));
+    info!("Downloaded {}", output_path.display().color(Color::Blue));
 
     Ok(())
 }
@@ -133,7 +132,7 @@ pub async fn download_and_save(
             download(url.as_str(), output.clone()).await?;
         } else {
             error!("{} is not a valid URL", link.color(Color::Blue));
-            println!("Searching for package instead..");
+            info!("Searching for package instead..");
 
             let query = parse_package_query(link);
             let packages = registry.storage.get_packages(&query);

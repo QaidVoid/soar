@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use tracing::info;
 
 use crate::{
     core::color::{Color, ColorExt},
     error,
     registry::PackageRegistry,
-    successln,
 };
 
 use super::{parse_package_query, PackageQuery, ResolvedPackage};
@@ -23,7 +23,7 @@ impl Updater {
         }
     }
 
-    pub async fn execute(&self, registry: &PackageRegistry) -> Result<()> {
+    pub async fn execute(&self, registry: &PackageRegistry, quiet: bool) -> Result<()> {
         let installed_guard = registry.installed_packages.lock().await;
         let packages = match &self.package_names {
             Some(r) => {
@@ -72,10 +72,15 @@ impl Updater {
 
         drop(installed_guard);
 
-        let total_progress_bar =
-            multi_progress.add(ProgressBar::new(packages_to_update.len() as u64));
+        let total_progress_bar = if !quiet {
+            Some(multi_progress.add(ProgressBar::new(packages_to_update.len() as u64)))
+        } else {
+            None
+        };
 
-        total_progress_bar.set_style(ProgressStyle::with_template("Updating {pos}/{len}").unwrap());
+        if let Some(pb) = &total_progress_bar {
+            pb.set_style(ProgressStyle::with_template("Updating {pos}/{len}").unwrap());
+        }
 
         if packages_to_update.is_empty() {
             error!("No updates available");
@@ -90,15 +95,23 @@ impl Updater {
                         None,
                         None,
                         None,
-                        multi_progress.clone(),
+                        if quiet {
+                            None
+                        } else {
+                            Some(multi_progress.clone())
+                        },
                     )
                     .await?;
                 update_count += 1;
-                total_progress_bar.inc(1);
+                if let Some(ref pb) = total_progress_bar {
+                    pb.inc(1);
+                }
             }
 
-            total_progress_bar.finish_and_clear();
-            successln!(
+            if let Some(pb) = total_progress_bar {
+                pb.finish_and_clear();
+            }
+            info!(
                 "{} packages updated.",
                 update_count.color(Color::BrightMagenta)
             );

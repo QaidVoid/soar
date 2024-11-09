@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
+use tracing::info;
 
 use crate::{
     core::{
@@ -167,7 +168,7 @@ impl InstalledPackages {
         }
 
         resolved_packages.iter().for_each(|package| {
-            println!(
+            info!(
                 "- [{}] {1}:{1}-{2} ({3}) ({4})",
                 package.collection.clone().color(Color::BrightGreen),
                 package.name.clone().color(Color::Blue),
@@ -185,11 +186,10 @@ impl InstalledPackages {
                 (count + 1, size + package.size),
             );
         });
-        println!();
-        println!("{:<2} Installed:", "");
+        info!("{:<2} Installed:", "");
 
         for (collection, (count, size)) in total.iter() {
-            println!(
+            info!(
                 "{:<4} {}: {} ({})",
                 "",
                 collection,
@@ -204,7 +204,7 @@ impl InstalledPackages {
                 (count_acc + count, value_acc + value)
             });
 
-        println!(
+        info!(
             "{:<2} Total: {} ({})",
             "",
             count.color(Color::BrightYellow),

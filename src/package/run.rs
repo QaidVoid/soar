@@ -3,13 +3,11 @@ use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf, process:
 use anyhow::{Context, Result};
 use futures::StreamExt;
 use tokio::{fs, io::AsyncWriteExt};
+use tracing::{error, info, warn};
 
-use crate::{
-    core::{
-        color::{Color, ColorExt},
-        util::{format_bytes, validate_checksum},
-    },
-    error, infoln, warnln,
+use crate::core::{
+    color::{Color, ColorExt},
+    util::{format_bytes, validate_checksum},
 };
 
 use super::ResolvedPackage;
@@ -43,7 +41,7 @@ impl Runner {
                     self.install_path.to_string_lossy().color(Color::Blue)
                 ));
             } else {
-                infoln!(
+                info!(
                     "Found existing cache for {}",
                     package_name.color(Color::Blue)
                 );
@@ -108,7 +106,7 @@ impl Runner {
         }
 
         if package.bsum == "null" {
-            warnln!(
+            warn!(
                 "Missing checksum for {}. Installing anyway.",
                 package.full_name('/').color(Color::Blue)
             );

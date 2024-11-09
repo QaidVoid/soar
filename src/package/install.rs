@@ -15,6 +15,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::Mutex,
 };
+use tracing::info;
 
 use crate::{
     core::{
@@ -58,7 +59,7 @@ impl Installer {
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
-        multi_progress: Arc<MultiProgress>,
+        multi_progress: Option<Arc<MultiProgress>>,
     ) -> Result<()> {
         let package = &self.resolved_package.package;
 
@@ -102,8 +103,13 @@ impl Installer {
         let mut file = BufReader::new(File::open(&self.install_path)?);
         let file_type = get_file_type(&mut file);
 
-        let warn = multi_progress.insert(1, ProgressBar::new(0));
-        warn.set_style(ProgressStyle::default_bar().template("{msg}").unwrap());
+        let warn_bar = if let Some(ref mp) = multi_progress {
+            let warn_bar = mp.insert(1, ProgressBar::new(0));
+            warn_bar.set_style(ProgressStyle::default_bar().template("{msg}").unwrap());
+            Some(warn_bar)
+        } else {
+            None
+        };
         match file_type {
             FileType::AppImage => {
                 if integrate_appimage(&mut file, package, &self.install_path)
@@ -118,8 +124,8 @@ impl Installer {
                         portable_config,
                     )
                     .await?;
-                } else {
-                    warn.finish_with_message(format!(
+                } else if let Some(wb) = warn_bar {
+                    wb.finish_with_message(format!(
                         "{}: {}",
                         prefix,
                         "Failed to integrate AppImage".color(Color::BrightYellow)
@@ -139,8 +145,8 @@ impl Installer {
                         portable_config,
                     )
                     .await?;
-                } else {
-                    warn.finish_with_message(format!(
+                } else if let Some(wb) = warn_bar {
+                    wb.finish_with_message(format!(
                         "{}: {}",
                         prefix,
                         "Failed to integrate FlatImage".color(Color::BrightYellow)
@@ -157,17 +163,19 @@ impl Installer {
                 .await?;
         }
 
-        let installed_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
-        installed_progress.set_style(ProgressStyle::default_bar().template("{msg}").unwrap());
-        installed_progress.finish_with_message(format!(
-            "[{}/{}] Installed {}",
-            (idx + 1).color(Color::Green),
-            total.color(Color::Cyan),
-            package.full_name('/').color(Color::Blue)
-        ));
+        if let Some(mp) = multi_progress {
+            let installed_progress = mp.insert_from_back(1, ProgressBar::new(0));
+            installed_progress.set_style(ProgressStyle::default_bar().template("{msg}").unwrap());
+            installed_progress.finish_with_message(format!(
+                "[{}/{}] Installed {}",
+                (idx + 1).color(Color::Green),
+                total.color(Color::Cyan),
+                package.full_name('/').color(Color::Blue)
+            ));
+        }
 
         if !package.note.is_empty() {
-            println!(
+            info!(
                 "{}: {}",
                 prefix,
                 package
@@ -182,7 +190,7 @@ impl Installer {
 
     async fn download_remote_package(
         &self,
-        multi_progress: Arc<MultiProgress>,
+        multi_progress: Option<Arc<MultiProgress>>,
         prefix: &str,
     ) -> Result<()> {
         let prefix = prefix.to_owned();
@@ -207,11 +215,17 @@ impl Installer {
             .map(|cl| cl + downloaded_bytes)
             .unwrap_or(0);
 
-        let download_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
-        download_progress.set_style(download_progress_style(true));
+        let download_progress = if let Some(ref mp) = multi_progress {
+            let download_progress = mp.insert_from_back(1, ProgressBar::new(0));
 
-        download_progress.set_length(total_size);
-        download_progress.set_message(prefix.clone());
+            download_progress.set_style(download_progress_style(true));
+
+            download_progress.set_length(total_size);
+            download_progress.set_message(prefix.clone());
+            Some(download_progress)
+        } else {
+            None
+        };
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
@@ -232,27 +246,41 @@ impl Installer {
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.context(format!("{}: Failed to read chunk", prefix))?;
             file.write_all(&chunk).await?;
-            download_progress.inc(chunk.len() as u64);
+            if let Some(ref pb) = download_progress {
+                pb.inc(chunk.len() as u64);
+            }
         }
-        download_progress.finish();
+        if let Some(ref pb) = download_progress {
+            pb.finish();
+        }
         file.flush().await?;
 
-        let warn_bar = multi_progress.insert_from_back(1, ProgressBar::new(0));
-        warn_bar.set_style(ProgressStyle::default_bar().template("{msg}").unwrap());
+        let warn_bar = if let Some(mp) = multi_progress {
+            let warn_bar = mp.insert_from_back(1, ProgressBar::new(0));
+            warn_bar.set_style(ProgressStyle::default_bar().template("{msg}").unwrap());
+            Some(warn_bar)
+        } else {
+            None
+        };
         if package.bsum == "null" {
-            warn_bar.finish_with_message(format!(
-                "{}: {}",
-                prefix,
-                "Missing checksum. Installing anyway.".color(Color::BrightYellow)
-            ));
+            if let Some(wb) = warn_bar {
+                wb.finish_with_message(format!(
+                    "{}: {}",
+                    prefix,
+                    "Missing checksum. Installing anyway.".color(Color::BrightYellow)
+                ));
+            }
         } else {
             let result = validate_checksum(&package.bsum, &self.temp_path).await;
             if result.is_err() {
-                warn_bar.finish_with_message(format!(
-                    "{}: {}",
-                    prefix,
-                    "Checksum verification failed. Installing anyway.".color(Color::BrightYellow)
-                ));
+                if let Some(wb) = warn_bar {
+                    wb.finish_with_message(format!(
+                        "{}: {}",
+                        prefix,
+                        "Checksum verification failed. Installing anyway."
+                            .color(Color::BrightYellow)
+                    ));
+                }
             }
         }
 
@@ -261,19 +289,24 @@ impl Installer {
 
     async fn copy_local_package(
         &self,
-        multi_progress: Arc<MultiProgress>,
+        multi_progress: Option<Arc<MultiProgress>>,
         prefix: &str,
     ) -> Result<()> {
         let temp_path = &self.temp_path;
         let prefix = prefix.to_owned();
         let package = &self.resolved_package.package;
 
-        let download_progress = multi_progress.insert_from_back(1, ProgressBar::new(0));
-        download_progress.set_style(download_progress_style(true));
+        let download_progress = if let Some(mp) = multi_progress {
+            let download_progress = mp.insert_from_back(1, ProgressBar::new(0));
+            download_progress.set_style(download_progress_style(true));
 
-        let total_size = package.size.parse::<u64>().unwrap_or_default();
-        download_progress.set_length(total_size);
-        download_progress.set_message(prefix.clone());
+            let total_size = package.size.parse::<u64>().unwrap_or_default();
+            download_progress.set_length(total_size);
+            download_progress.set_message(prefix.clone());
+            Some(download_progress)
+        } else {
+            None
+        };
 
         let mut file = fs::OpenOptions::new()
             .create(true)
@@ -290,9 +323,13 @@ impl Installer {
             }
 
             file.write_all(&buffer[..n]).await?;
-            download_progress.inc(n as u64);
+            if let Some(ref pb) = download_progress {
+                pb.inc(n as u64);
+            }
         }
-        download_progress.finish();
+        if let Some(pb) = download_progress {
+            pb.finish();
+        }
         file.flush().await?;
 
         Ok(())

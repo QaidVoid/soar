@@ -9,6 +9,7 @@ use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
 use termion::cursor;
 use tokio::{fs, sync::Mutex};
+use tracing::{error, info};
 
 use crate::{
     core::{
@@ -16,11 +17,9 @@ use crate::{
         config::CONFIG,
         util::{get_terminal_width, wrap_text},
     },
-    error, infoln,
     package::{
         image::get_package_image_string, parse_package_query, update::Updater, ResolvedPackage,
     },
-    successln,
 };
 
 mod fetcher;
@@ -91,6 +90,7 @@ impl PackageRegistry {
         portable_home: Option<String>,
         portable_config: Option<String>,
         yes: bool,
+        quiet: bool,
     ) -> Result<()> {
         self.storage
             .install_packages(
@@ -101,6 +101,7 @@ impl PackageRegistry {
                 portable_home,
                 portable_config,
                 yes,
+                quiet,
             )
             .await
     }
@@ -131,7 +132,7 @@ impl PackageRegistry {
                 } else {
                     "-"
                 };
-                println!(
+                info!(
                     "[{}] [{}] {}: {} ({})",
                     installed,
                     pkg.collection.clone().color(Color::BrightGreen),
@@ -142,7 +143,7 @@ impl PackageRegistry {
             });
 
             if result.len() > limit {
-                println!(
+                info!(
                     "\x1b[5mShowing {} of {} results\x1b[0m",
                     limit,
                     result.len()
@@ -261,14 +262,14 @@ impl PackageRegistry {
             });
 
             printable.extend(cursor::Down(1).to_string().as_bytes());
-            println!("{}", String::from_utf8(printable).unwrap());
+            info!("{}", String::from_utf8(printable).unwrap());
         }
         Ok(())
     }
 
-    pub async fn update(&self, package_names: Option<&[String]>) -> Result<()> {
+    pub async fn update(&self, package_names: Option<&[String]>, quiet: bool) -> Result<()> {
         let updater = Updater::new(package_names);
-        updater.execute(self).await
+        updater.execute(self, quiet).await
     }
 
     pub async fn info(&self, package_names: Option<&[String]>) -> Result<()> {
@@ -292,7 +293,7 @@ impl PackageRegistry {
             } else {
                 "-"
             };
-            println!(
+            info!(
                 "[{0}] [{1}] {2}:{3}-{4} ({5})",
                 install_prefix.color(Color::Red),
                 resolved_package.collection.color(Color::BrightGreen),
@@ -313,14 +314,14 @@ impl PackageRegistry {
         self.storage.run(command, yes).await
     }
 
-    pub async fn use_package(&self, package_name: &str) -> Result<()> {
+    pub async fn use_package(&self, package_name: &str, quiet: bool) -> Result<()> {
         let installed_guard = self.installed_packages.lock().await;
         let resolved_package = self.storage.resolve_package(package_name, false)?;
         let result = installed_guard.use_package(&resolved_package).await;
         drop(installed_guard);
         match result {
             Ok(_) => {
-                successln!(
+                info!(
                     "{} is linked to binary path",
                     package_name.color(Color::Blue)
                 );
@@ -339,6 +340,7 @@ impl PackageRegistry {
                             None,
                             None,
                             false,
+                            quiet,
                         )
                         .await?;
 
@@ -352,12 +354,12 @@ impl PackageRegistry {
 }
 
 pub fn select_single_package(packages: &[ResolvedPackage]) -> Result<&ResolvedPackage> {
-    infoln!(
+    info!(
         "Multiple packages available for {}",
         packages[0].package.pkg.clone().color(Color::Blue)
     );
     for (i, package) in packages.iter().enumerate() {
-        println!(
+        info!(
             "  [{}] [{}] {}: {}",
             i + 1,
             package.collection.clone().color(Color::BrightGreen),

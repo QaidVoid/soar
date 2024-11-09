@@ -1,13 +1,8 @@
 use anyhow::{Context, Result};
 use tokio::fs;
+use tracing::warn;
 
-use crate::{
-    core::{
-        color::{Color, ColorExt},
-        config::Repository,
-    },
-    warnln,
-};
+use crate::core::config::Repository;
 
 use super::fetcher::MetadataFetcher;
 
@@ -27,7 +22,7 @@ impl MetadataLoader {
                 .with_file_name(format!("{}.remote.bsum", repo.name));
             let local_checksum = fs::read(&checksum_path).await.unwrap_or_default();
             if checksum != local_checksum {
-                warnln!("Local registry is outdated. Refetching...");
+                warn!("Local registry is outdated. Refetching...");
                 let content = fetcher.execute(repo).await;
                 fs::write(checksum_path, &checksum).await?;
                 return content;

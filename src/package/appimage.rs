@@ -9,14 +9,12 @@ use anyhow::{Context, Result};
 use backhand::{kind::Kind, FilesystemReader, InnerNode, Node, SquashfsFileReader};
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use tokio::{fs, try_join};
+use tracing::{error, info};
 
-use crate::{
-    core::{
-        color::{Color, ColorExt},
-        constant::{BIN_PATH, PACKAGES_PATH},
-        util::{download, home_data_path},
-    },
-    error, infoln,
+use crate::core::{
+    color::{Color, ColorExt},
+    constant::{BIN_PATH, PACKAGES_PATH},
+    util::{download, home_data_path},
 };
 
 use super::Package;
@@ -68,12 +66,9 @@ fn normalize_image(image: DynamicImage) -> DynamicImage {
     let (new_width, new_height) = find_nearest_supported_dimension(width, height);
 
     if (width, height) != (new_width, new_height) {
-        infoln!(
+        info!(
             "Resizing image from {}x{} to {}x{}",
-            width,
-            height,
-            new_width,
-            new_height
+            width, height, new_width, new_height
         );
         image.resize(new_width, new_height, FilterType::Lanczos3)
     } else {

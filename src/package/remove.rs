@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use tokio::fs;
+use tracing::info;
 
 use crate::{
     core::{
@@ -10,7 +11,6 @@ use crate::{
     },
     package::appimage::remove_applinks,
     registry::installed::{InstalledPackage, InstalledPackages},
-    successln,
 };
 
 pub struct Remover {
@@ -34,7 +34,7 @@ impl Remover {
         self.remove_package_path(&install_dir).await?;
         installed_packages.unregister_package(&self.package).await?;
 
-        successln!(
+        info!(
             "Package {} removed successfully.",
             package.full_name('/').color(Color::Blue)
         );

@@ -57,7 +57,7 @@ impl ResolvedPackage {
         portable: Option<String>,
         portable_home: Option<String>,
         portable_config: Option<String>,
-        multi_progress: Arc<MultiProgress>,
+        multi_progress: Option<Arc<MultiProgress>>,
     ) -> Result<()> {
         let mut installer = Installer::new(self);
         installer
