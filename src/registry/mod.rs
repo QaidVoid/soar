@@ -1,21 +1,21 @@
-use std::{io::Write, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
+use serde::Deserialize;
+use termion::cursor;
+use tokio::{fs, sync::Mutex};
+use tracing::{error, info};
 
 use fetcher::MetadataFetcher;
 use installed::InstalledPackages;
 use loader::MetadataLoader;
-use serde::Deserialize;
 use storage::{PackageStorage, RepositoryPackages};
-use termion::cursor;
-use tokio::{fs, sync::Mutex};
-use tracing::{error, info};
 
 use crate::{
     core::{
         color::{Color, ColorExt},
         config::CONFIG,
-        util::{get_terminal_width, wrap_text},
+        util::{get_terminal_width, interactive_ask, wrap_text, AskType},
     },
     package::{
         image::get_package_image_string, parse_package_query, update::Updater, ResolvedPackage,
@@ -369,13 +369,12 @@ pub fn select_single_package(packages: &[ResolvedPackage]) -> Result<&ResolvedPa
     }
 
     let selection = loop {
-        print!("Select a package (1-{}): ", packages.len());
-        std::io::stdout().flush()?;
+        let response = interactive_ask(
+            &format!("Select a package (1-{}): ", packages.len()),
+            AskType::Normal,
+        )?;
 
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-
-        match input.trim().parse::<usize>() {
+        match response.parse::<usize>() {
             Ok(n) if n > 0 && n <= packages.len() => break n - 1,
             _ => error!("Invalid selection, please try again."),
         }

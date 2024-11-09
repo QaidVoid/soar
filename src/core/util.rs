@@ -17,7 +17,7 @@ use tokio::{
 };
 use tracing::info;
 
-use crate::{core::constant::ROOT_PATH, warn};
+use crate::core::constant::ROOT_PATH;
 
 use super::{
     color::{Color, ColorExt},
@@ -383,11 +383,14 @@ pub enum AskType {
 }
 
 pub fn interactive_ask(ques: &str, ask_type: AskType) -> Result<String> {
-    if ask_type == AskType::Warn {
-        warn!("{ques}");
-    } else {
-        print!("{ques}");
-    }
+    print!(
+        "{}{ques}",
+        if ask_type == AskType::Warn {
+            "[WARN]".color(Color::BrightYellow)
+        } else {
+            "".to_owned()
+        }
+    );
 
     std::io::stdout().flush()?;
 

@@ -4,7 +4,9 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use futures::StreamExt;
 use indicatif::ProgressBar;
+use regex::Regex;
 use reqwest::Url;
+use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
@@ -15,11 +17,29 @@ use crate::{
     core::{
         color::{Color, ColorExt},
         constant::ELF_MAGIC_BYTES,
-        util::{download_progress_style, format_bytes},
+        util::{download_progress_style, format_bytes, interactive_ask, AskType},
     },
     package::parse_package_query,
     registry::{select_single_package, PackageRegistry},
 };
+
+#[derive(Debug, Deserialize, Serialize)]
+struct GithubAsset {
+    name: String,
+    size: u64,
+    browser_download_url: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct GithubRelease {
+    tag_name: String,
+    draft: bool,
+    prerelease: bool,
+    published_at: String,
+    assets: Vec<GithubAsset>,
+}
+
+static GITHUB_URL_REGEX: &str = r"^(?:https?://)?(?:github(?:\.com)?[:/])([^/]+/[^/]+)$";
 
 fn extract_filename(url: &str) -> String {
     Path::new(url)
@@ -121,14 +141,93 @@ async fn download(url: &str, output: Option<String>) -> Result<()> {
     Ok(())
 }
 
+async fn fetch_github_releases(user_repo: &str) -> Result<Vec<GithubRelease>> {
+    let client = reqwest::Client::new();
+    let url = format!("https://api.github.com/repos/{}/releases", user_repo);
+    let response = client
+        .get(&url)
+        .header("User-Agent", "rust-client") // GitHub API requires a user-agent header
+        .send()
+        .await
+        .context("Failed to fetch GitHub releases")?;
+
+    if !response.status().is_success() {
+        anyhow::bail!(
+            "Error fetching releases for {}: {}",
+            user_repo,
+            response.status()
+        );
+    }
+
+    let releases: Vec<GithubRelease> = response
+        .json()
+        .await
+        .context("Failed to parse GitHub response")?;
+
+    Ok(releases)
+}
+
 pub async fn download_and_save(
     registry: PackageRegistry,
     links: &[String],
     yes: bool,
     output: Option<String>,
 ) -> Result<()> {
+    let re = Regex::new(GITHUB_URL_REGEX).unwrap();
     for link in links {
-        if let Ok(url) = Url::parse(link) {
+        if re.is_match(link) {
+            info!(
+                "GitHub repository URL detected: {}",
+                link.color(Color::Blue)
+            );
+            let captures = Regex::new(GITHUB_URL_REGEX).unwrap().captures(link);
+            if let Some(caps) = captures {
+                let user_repo = caps.get(1).unwrap().as_str();
+                info!("Fetching releases for {}...", user_repo);
+
+                let releases = fetch_github_releases(user_repo).await?;
+
+                let Some(release) = releases.iter().find(|release| !release.prerelease) else {
+                    error!("No stable releases found for repository {}", user_repo);
+                    continue;
+                };
+
+                let assets = &release.assets;
+
+                if assets.is_empty() {
+                    error!("No assets found for the release.");
+                    continue;
+                }
+
+                let selected_file = if assets.len() == 1 || yes {
+                    &assets[0]
+                } else {
+                    for (i, asset) in assets.iter().enumerate() {
+                        info!(
+                            " [{}] {:#?} ({})",
+                            i + 1,
+                            asset.name,
+                            format_bytes(asset.size),
+                        );
+                    }
+                    let selection = loop {
+                        let response = interactive_ask(
+                            &format!("Select a file (1-{}): ", assets.len()),
+                            AskType::Normal,
+                        )?;
+
+                        match response.parse::<usize>() {
+                            Ok(n) if n > 0 && n <= releases.len() => break n - 1,
+                            _ => error!("Invalid selection, please try again."),
+                        }
+                    };
+                    &assets[selection]
+                };
+
+                let download_url = &selected_file.browser_download_url;
+                download(download_url, output.clone()).await?;
+            }
+        } else if let Ok(url) = Url::parse(link) {
             download(url.as_str(), output.clone()).await?;
         } else {
             error!("{} is not a valid URL", link.color(Color::Blue));

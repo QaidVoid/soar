@@ -7,10 +7,8 @@ use tracing::{info, warn};
 
 use crate::core::{
     color::{Color, ColorExt},
-    constant::CAP_MKNOD,
+    constant::{CAP_MKNOD, CAP_SYS_ADMIN},
 };
-
-use super::constant::CAP_SYS_ADMIN;
 
 fn check_capability(cap: i32) -> bool {
     unsafe { libc::prctl(PR_CAPBSET_READ, cap, 0, 0) == 1 }

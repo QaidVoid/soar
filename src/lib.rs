@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use cli::{Args, Commands};
-use misc::download::download_and_save;
+use misc::{download::download_and_save, health::check_health};
 use registry::PackageRegistry;
 use tracing::{debug, error, trace, warn};
 
@@ -9,7 +9,6 @@ use core::{
     color::{Color, ColorExt},
     config::{self, generate_default_config},
     constant::BIN_PATH,
-    health::check_health,
     log::setup_logging,
     util::{cleanup, print_env, setup_required_paths},
 };
