@@ -173,8 +173,12 @@ pub async fn download_and_save(
     links: &[String],
     yes: bool,
     output: Option<String>,
+    regex: Option<String>,
 ) -> Result<()> {
     let re = Regex::new(GITHUB_URL_REGEX).unwrap();
+    let asset_re = regex.as_deref();
+    let asset_re = Regex::new(asset_re.unwrap_or_default())?;
+
     for link in links {
         if re.is_match(link) {
             info!(
@@ -193,7 +197,9 @@ pub async fn download_and_save(
                         .iter()
                         .find(|release| release.tag_name.starts_with(tag_name))
                 } else {
-                    releases.iter().find(|release| !release.prerelease)
+                    releases
+                        .iter()
+                        .find(|release| !release.prerelease && !release.draft)
                 };
 
                 let Some(release) = release else {
@@ -206,16 +212,6 @@ pub async fn download_and_save(
                     continue;
                 };
 
-                info!(
-                    "Showing assets for {}{}",
-                    release.tag_name,
-                    if release.prerelease {
-                        " [prerelease]".color(Color::BrightRed)
-                    } else {
-                        " [stable]".color(Color::BrightCyan)
-                    }
-                );
-
                 let assets = &release.assets;
 
                 if assets.is_empty() {
@@ -223,9 +219,24 @@ pub async fn download_and_save(
                     continue;
                 }
 
-                let selected_file = if assets.len() == 1 || yes {
+                let selected_file = if regex.is_some() {
+                    let Some(asset) = assets.iter().find(|asset| asset_re.is_match(&asset.name))
+                    else {
+                        continue;
+                    };
+                    asset
+                } else if assets.len() == 1 || yes {
                     &assets[0]
                 } else {
+                    info!(
+                        "Showing assets for {}{}",
+                        release.tag_name,
+                        if release.prerelease {
+                            " [prerelease]".color(Color::BrightRed)
+                        } else {
+                            " [stable]".color(Color::BrightCyan)
+                        }
+                    );
                     for (i, asset) in assets.iter().enumerate() {
                         info!(
                             " [{}] {:#?} ({})",

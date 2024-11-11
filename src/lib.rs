@@ -120,8 +120,13 @@ async fn handle_cli() -> Result<()> {
         Commands::Use { package } => {
             registry.await?.use_package(&package, args.quiet).await?;
         }
-        Commands::Download { links, yes, output } => {
-            download_and_save(registry.await?, links.as_ref(), yes, output).await?;
+        Commands::Download {
+            links,
+            yes,
+            output,
+            regex,
+        } => {
+            download_and_save(registry.await?, links.as_ref(), yes, output, regex).await?;
         }
         Commands::Health => {
             check_health().await;

@@ -1,4 +1,4 @@
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand, ValueHint};
 
 #[derive(Parser)]
 #[command(
@@ -45,15 +45,15 @@ pub enum Commands {
         yes: bool,
 
         /// Set portable dir for home & config
-        #[arg(required = false, short, long, num_args = 0..=1)]
+        #[arg(required = false, short, long, num_args = 0..=1, value_hint = ValueHint::AnyPath)]
         portable: Option<Option<String>>,
 
         /// Set portable home
-        #[arg(required = false, long, num_args = 0..=1)]
+        #[arg(required = false, long, num_args = 0..=1, value_hint = ValueHint::AnyPath)]
         portable_home: Option<Option<String>>,
 
         /// Set portable config
-        #[arg(required = false, long, num_args = 0..=1)]
+        #[arg(required = false, long, num_args = 0..=1, value_hint = ValueHint::AnyPath)]
         portable_config: Option<Option<String>>,
     },
 
@@ -177,8 +177,12 @@ pub enum Commands {
         yes: bool,
 
         /// Output file path
-        #[arg(required = false, short, long)]
+        #[arg(required = false, short, long, value_hint = ValueHint::AnyPath)]
         output: Option<String>,
+
+        /// Regex to select the asset. Only works for github downloads
+        #[arg(required = false, short, long)]
+        regex: Option<String>,
     },
 
     /// Health check

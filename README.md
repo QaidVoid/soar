@@ -1,8 +1,25 @@
 # Soar Package Manager
 
-[![Crates.io](https://img.shields.io/crates/v/soar-cli)](https://crates.io/crates/soar-cli)
-[![Documentation](https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue)](https://soar.qaidvoid.dev)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<div align="center">
+
+[crates-shield]: https://img.shields.io/crates/v/soar-cli
+[crates-url]: https://crates.io/crates/soar-cli
+[stars-shield]: https://img.shields.io/github/stars/pkgforge/soar.svg
+[stars-url]: https://github.com/pkgforge/soar/stargazers
+[issues-shield]: https://img.shields.io/github/issues/pkgforge/soar.svg
+[issues-url]: https://github.com/pkgforge/soar/issues
+[license-shield]: https://img.shields.io/github/license/pkgforge/soar.svg
+[license-url]: https://github.com/pkgforge/soar/blob/main/LICENSE
+[doc-shield]: https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue
+[doc-url]: https://soar.qaidvoid.dev
+
+[![Crates.io][crates-shield]][crates-url]
+[![Documentation][doc-shield]][doc-url]
+[![Issues][issues-shield]][issues-url]
+[![License: MIT][license-shield]][license-url]
+[![Stars][stars-shield]][stars-url]
+
+</div>
 
 Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
 
