@@ -21,11 +21,23 @@
 
 </div>
 
-Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
-
 <p align="center">
     <img src="icons/hicolor/scalable/apps/soar.svg" alt="soar" width="256"/>
 </p>
+
+<p align="center">
+    Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
+</p>
+
+<div align="center">
+
+| <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/install.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/remove.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/download.webp" /> | 
+| - | - | - |
+| **Install Packages** | **Remove Packages** | **Download File** |
+| <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/run.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/list.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/search.webp" /> |
+| **Run Package** | **List Packages** | **Search Packages** |
+
+</div>
 
 ## 🌟 Key Features
 - [Universal Package Support](https://soar.qaidvoid.dev/#universal-package-support)
