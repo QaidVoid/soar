@@ -23,26 +23,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   publish-nightly:
     name: Publish nightly binaries
-    runs-on: ${{ matrix.build.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         build:
           - {
               NAME: x86_64-linux,
-              OS: ubuntu-22.04,
-              TOOLCHAIN: stable,
               TARGET: x86_64-unknown-linux-musl,
             }
           - {
               NAME: aarch64-linux,
-              OS: ubuntu-22.04,
-              TOOLCHAIN: stable,
               TARGET: aarch64-unknown-linux-musl,
             }
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Get version info
+        id: version
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=nightly-${SHORT_SHA}" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         shell: bash
@@ -52,18 +54,17 @@ jobs:
             --allow-unauthenticated musl-tools b3sum
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.build.TOOLCHAIN }}
+          targets: ${{ matrix.build.TARGET }}
+
+      - name: Install cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
           target: ${{ matrix.build.TARGET }}
-          override: true
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --locked --target ${{ matrix.build.TARGET }}
+        run: SOAR_NIGHTLY=1 cargo build --release --locked --target ${{ matrix.build.TARGET }}
 
       - name: Prepare nightly binary
         shell: bash
@@ -77,7 +78,7 @@ jobs:
         with:
           files: nightly/*
           tag_name: nightly
-          name: "Nightly Build"
+          name: ${{ steps.version.outputs.version }}
           body: "This is an automated nightly build of Soar."
           prerelease: true
           draft: false
