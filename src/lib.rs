@@ -35,7 +35,7 @@ async fn handle_cli() -> Result<()> {
         }
     }
 
-    let args = Args::try_parse_from(args)?;
+    let args = Args::parse_from(args);
 
     setup_logging(&args);
 
