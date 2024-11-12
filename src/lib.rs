@@ -12,7 +12,7 @@ use core::{
     log::setup_logging,
     util::{cleanup, print_env, setup_required_paths},
 };
-use std::{env, path::Path};
+use std::{env, io::Read, path::Path};
 
 mod cli;
 pub mod core;
@@ -21,7 +21,21 @@ mod package;
 mod registry;
 
 async fn handle_cli() -> Result<()> {
-    let args = Args::parse();
+    let mut args = env::args().collect::<Vec<_>>();
+
+    if let Some(command) = args.last() {
+        if command == "-" {
+            args.pop();
+            let mut stdin = std::io::stdin();
+            let mut buffer = String::new();
+            if stdin.read_to_string(&mut buffer).is_ok() {
+                let stdin_args = buffer.split_whitespace().collect::<Vec<&str>>();
+                args.extend(stdin_args.into_iter().map(String::from));
+            }
+        }
+    }
+
+    let args = Args::try_parse_from(args)?;
 
     setup_logging(&args);
 

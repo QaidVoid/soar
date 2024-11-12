@@ -287,7 +287,7 @@ pub async fn download_and_save(
                                     }
                                 );
 
-                                let asset_idx = select_asset_idx(&assets, releases.len())?;
+                                let asset_idx = select_asset_idx(&assets, assets.len())?;
                                 assets[asset_idx]
                             }
                         }
