@@ -124,9 +124,20 @@ async fn handle_cli() -> Result<()> {
             links,
             yes,
             output,
-            regex,
+            regex_patterns,
+            match_keywords,
+            exclude_keywords,
         } => {
-            download_and_save(registry.await?, links.as_ref(), yes, output, regex).await?;
+            download_and_save(
+                registry.await?,
+                links.as_ref(),
+                yes,
+                output,
+                regex_patterns.as_deref(),
+                match_keywords.as_deref(),
+                exclude_keywords.as_deref(),
+            )
+            .await?;
         }
         Commands::Health => {
             check_health().await;

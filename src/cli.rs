@@ -181,8 +181,16 @@ pub enum Commands {
         output: Option<String>,
 
         /// Regex to select the asset. Only works for github downloads
-        #[arg(required = false, short, long)]
-        regex: Option<String>,
+        #[arg(required = false, short = 'r', long = "regex")]
+        regex_patterns: Option<Vec<String>>,
+
+        /// Check if the asset contains given string
+        #[arg(required = false, short, long = "match")]
+        match_keywords: Option<Vec<String>>,
+
+        /// Check if the asset contains given string
+        #[arg(required = false, short, long = "exclude")]
+        exclude_keywords: Option<Vec<String>>,
     },
 
     /// Health check

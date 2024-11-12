@@ -23,7 +23,7 @@ use crate::{
     registry::{select_single_package, PackageRegistry},
 };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 struct GithubAsset {
     name: String,
     size: u64,
@@ -168,16 +168,48 @@ async fn fetch_github_releases(user_repo: &str) -> Result<Vec<GithubRelease>> {
     Ok(releases)
 }
 
+fn select_asset_idx(assets: &[&GithubAsset], max: usize) -> Result<usize> {
+    for (i, asset) in assets.iter().enumerate() {
+        info!(
+            " [{}] {:#?} ({})",
+            i + 1,
+            asset.name,
+            format_bytes(asset.size),
+        );
+    }
+    let selection = loop {
+        let response = interactive_ask(
+            &format!("Select an asset (1-{}): ", assets.len()),
+            AskType::Normal,
+        )?;
+
+        match response.parse::<usize>() {
+            Ok(n) if n > 0 && n <= max => break n - 1,
+            _ => error!("Invalid selection, please try again."),
+        }
+    };
+    Ok(selection)
+}
+
 pub async fn download_and_save(
     registry: PackageRegistry,
     links: &[String],
     yes: bool,
     output: Option<String>,
-    regex: Option<String>,
+    regex_patterns: Option<&[String]>,
+    match_keywords: Option<&[String]>,
+    exclude_keywords: Option<&[String]>,
 ) -> Result<()> {
     let re = Regex::new(GITHUB_URL_REGEX).unwrap();
-    let asset_re = regex.as_deref();
-    let asset_re = Regex::new(asset_re.unwrap_or_default())?;
+    let asset_regexes = regex_patterns
+        .map(|patterns| {
+            patterns
+                .iter()
+                .map(|pattern| Regex::new(pattern))
+                .collect::<Result<Vec<Regex>, regex::Error>>()
+        })
+        .transpose()?
+        .unwrap_or_default();
 
     for link in links {
         if re.is_match(link) {
@@ -219,47 +251,50 @@ pub async fn download_and_save(
                     continue;
                 }
 
-                let selected_file = if regex.is_some() {
-                    let Some(asset) = assets.iter().find(|asset| asset_re.is_match(&asset.name))
-                    else {
-                        continue;
-                    };
-                    asset
-                } else if assets.len() == 1 || yes {
-                    &assets[0]
-                } else {
-                    info!(
-                        "Showing assets for {}{}",
-                        release.tag_name,
-                        if release.prerelease {
-                            " [prerelease]".color(Color::BrightRed)
-                        } else {
-                            " [stable]".color(Color::BrightCyan)
-                        }
-                    );
-                    for (i, asset) in assets.iter().enumerate() {
-                        info!(
-                            " [{}] {:#?} ({})",
-                            i + 1,
-                            asset.name,
-                            format_bytes(asset.size),
-                        );
-                    }
-                    let selection = loop {
-                        let response = interactive_ask(
-                            &format!("Select a file (1-{}): ", assets.len()),
-                            AskType::Normal,
-                        )?;
+                let selected_asset = {
+                    let assets: Vec<&GithubAsset> = assets
+                        .iter()
+                        .filter(|asset| {
+                            asset_regexes
+                                .iter()
+                                .all(|regex| regex.is_match(&asset.name))
+                                && match_keywords.map_or(true, |keywords| {
+                                    keywords.iter().all(|keyword| asset.name.contains(keyword))
+                                })
+                                && exclude_keywords.map_or(true, |keywords| {
+                                    keywords.iter().all(|keyword| !asset.name.contains(keyword))
+                                })
+                        })
+                        .collect();
 
-                        match response.parse::<usize>() {
-                            Ok(n) if n > 0 && n <= releases.len() => break n - 1,
-                            _ => error!("Invalid selection, please try again."),
+                    match assets.len() {
+                        0 => {
+                            error!("No assets matched the provided criteria.");
+                            continue;
                         }
-                    };
-                    &assets[selection]
+                        1 => assets[0],
+                        _ => {
+                            if yes {
+                                assets[0]
+                            } else {
+                                info!(
+                                    "Multiple matching assets found for {}{}",
+                                    release.tag_name,
+                                    if release.prerelease {
+                                        " [prerelease]".color(Color::BrightRed)
+                                    } else {
+                                        " [stable]".color(Color::BrightCyan)
+                                    }
+                                );
+
+                                let asset_idx = select_asset_idx(&assets, releases.len())?;
+                                assets[asset_idx]
+                            }
+                        }
+                    }
                 };
 
-                let download_url = &selected_file.browser_download_url;
+                let download_url = &selected_asset.browser_download_url;
                 download(download_url, output.clone()).await?;
             }
         } else if let Ok(url) = Url::parse(link) {
