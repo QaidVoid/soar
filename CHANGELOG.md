@@ -1,5 +1,24 @@
 
-## [0.4.4](https://github.com/pkgforge/soar/compare/v0.4.3..0.4.4) - 2024-11-09
+## [0.4.5](https://github.com/pkgforge/soar/compare/v0.4.4..0.4.5) - 2024-11-12
+
+### ⛰️  Features
+
+- *(cli)* Allow stdin input as args - ([5e1fcaf](https://github.com/pkgforge/soar/commit/5e1fcafe4134b948ec8e860332d448e75fa90d44))
+- *(download)* Add ergonomic flags for github asset matching - ([e47083d](https://github.com/pkgforge/soar/commit/e47083d3fc87b39fe938d035748de89f89161c45))
+- *(download)* Allow regex filter for github asset - ([85736a6](https://github.com/pkgforge/soar/commit/85736a6de8a8cb63aaa7197c5f1cdf8c880e1e5b))
+- *(download)* Allow specifying tagname for github downloads - ([fcf5ba4](https://github.com/pkgforge/soar/commit/fcf5ba4328eb7e9ebaec72e43a6235fb6cbf3857))
+- *(download)* Add support for downloading github release - ([9ca101d](https://github.com/pkgforge/soar/commit/9ca101d1a4e7105c0ac5da4ded625f032e12513c))
+
+### 📚 Documentation
+
+- *(readme)* Add autoplay videos - ([80cfceb](https://github.com/pkgforge/soar/commit/80cfceb122d519ab57b460386d51182e9884391c))
+
+### ⚙️ Miscellaneous Tasks
+
+- *(workflow)* Update release workflow - ([e0b9a58](https://github.com/pkgforge/soar/commit/e0b9a5886bcdafb27a2af0cae42f72ec6d5beda1))
+
+
+## [0.4.4](https://github.com/pkgforge/soar/compare/v0.4.3..v0.4.4) - 2024-11-09
 
 ### ⛰️  Features
 
@@ -144,9 +163,6 @@
 - *(workflow)* Run nightly on every commit - ([42ddf90](https://github.com/pkgforge/soar/commit/42ddf90857a1c9a0ff264dbac45e1fda114c0935))
 - *(workflow)* Add nightly workflow - ([f697a5f](https://github.com/pkgforge/soar/commit/f697a5f86adc4c75822e0c8fc3b3a0e7dacd9479))
 
-## New Contributors ❤️
-
-* @dependabot[bot] made their first contribution in [#1](https://github.com/pkgforge/soar/pull/1)
 
 ## [0.2.0](https://github.com/pkgforge/soar/compare/v0.1.0..v0.2.0) - 2024-10-11
 

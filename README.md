@@ -33,9 +33,9 @@
 
 | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/install.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/remove.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/download.webp" /> | 
 | - | - | - |
-| **Install Packages** | **Remove Packages** | **Download File** |
+| [**`Install Packages`**](https://soar.qaidvoid.dev/install) | [**`Remove Packages`**](https://soar.qaidvoid.dev/remove) | [**`Download File`**](https://soar.qaidvoid.dev/download) |
 | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/run.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/list.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/search.webp" /> |
-| **Run Package** | **List Packages** | **Search Packages** |
+| [**`Run Package`**](https://soar.qaidvoid.dev/run) | [**`List Packages`**](https://soar.qaidvoid.dev/list) | [**`Search Packages`**](https://soar.qaidvoid.dev/search) |
 
 </div>
 
