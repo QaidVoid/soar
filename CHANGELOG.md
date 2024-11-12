@@ -1,5 +1,12 @@
 
-## [0.4.5](https://github.com/pkgforge/soar/compare/v0.4.4..0.4.5) - 2024-11-12
+## [0.4.6](https://github.com/pkgforge/soar/compare/v0.4.5..0.4.6) - 2024-11-12
+
+### 🐛 Bug Fixes
+
+- *(args)* Fix clap responses - ([af655eb](https://github.com/pkgforge/soar/commit/af655eb5e4cfb5214738c0989868d12d84eccc00))
+
+
+## [0.4.5](https://github.com/pkgforge/soar/compare/v0.4.4..v0.4.5) - 2024-11-12
 
 ### ⛰️  Features
 
