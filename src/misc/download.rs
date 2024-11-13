@@ -40,7 +40,7 @@ struct GithubRelease {
 }
 
 static GITHUB_URL_REGEX: &str =
-    r"^(?i)(?:https?://)?(?:github(?:\.com)?[:/])([^/@]+/[^/@]+)(?:@([^/\s]+))?(?:/.*)?$";
+    r"^(?i)(?:https?://)?(?:github(?:\.com)?[:/])([^/@]+/[^/@]+)(?:@([^/\s]+))?$";
 
 fn extract_filename(url: &str) -> String {
     Path::new(url)
@@ -259,10 +259,14 @@ pub async fn download_and_save(
                                 .iter()
                                 .all(|regex| regex.is_match(&asset.name))
                                 && match_keywords.map_or(true, |keywords| {
-                                    keywords.iter().all(|keyword| asset.name.contains(keyword))
+                                    keywords.iter().all(|keyword| {
+                                        asset.name.to_lowercase().contains(&keyword.to_lowercase())
+                                    })
                                 })
                                 && exclude_keywords.map_or(true, |keywords| {
-                                    keywords.iter().all(|keyword| !asset.name.contains(keyword))
+                                    keywords.iter().all(|keyword| {
+                                        !asset.name.to_lowercase().contains(&keyword.to_lowercase())
+                                    })
                                 })
                         })
                         .collect();
