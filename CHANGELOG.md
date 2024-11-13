@@ -1,5 +1,14 @@
 
-## [0.4.6](https://github.com/pkgforge/soar/compare/v0.4.5..0.4.6) - 2024-11-12
+## [0.4.7](https://github.com/pkgforge/soar/compare/v0.4.6..0.4.7) - 2024-11-13
+
+### 🐛 Bug Fixes
+
+- *(download)* Fix github regex pattern and make filter case-insensitive - ([546cb62](https://github.com/pkgforge/soar/commit/546cb622d37285ec1ccc57eab6a40ac834ae9bab))
+- *(flatimage)* Fix flatimage portable config symlink path - ([37075ec](https://github.com/pkgforge/soar/commit/37075ec3795de426c64b88abcd1854a52298cfe2))
+- Read config, allow stdin anywhere, ignore invalid package - ([0a8d1bd](https://github.com/pkgforge/soar/commit/0a8d1bd6ec4c99762fd08c9f23117ea929844c78))
+
+
+## [0.4.6](https://github.com/pkgforge/soar/compare/v0.4.5..v0.4.6) - 2024-11-12
 
 ### 🐛 Bug Fixes
 
