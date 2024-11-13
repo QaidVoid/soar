@@ -121,7 +121,7 @@ pub fn parse_package_query(query: &str) -> PackageQuery {
 }
 
 #[inline]
-pub fn gen_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPackage> {
+pub fn gen_package_info(name: &str, path: &Path, size: u64) -> ResolvedPackage {
     let package = Package {
         pkg: name.to_owned(),
         pkg_name: name.to_owned(),
@@ -130,11 +130,9 @@ pub fn gen_package_info(name: &str, path: &Path, size: u64) -> Result<ResolvedPa
         ..Default::default()
     };
 
-    let resolved_package = ResolvedPackage {
+    ResolvedPackage {
         repo_name: "local".to_owned(),
         collection: "local".to_string(),
         package,
-    };
-
-    Ok(resolved_package)
+    }
 }

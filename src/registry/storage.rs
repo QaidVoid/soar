@@ -83,34 +83,40 @@ impl PackageStorage {
         yes: bool,
         quiet: bool,
     ) -> Result<()> {
-        let resolved_packages: Result<Vec<ResolvedPackage>> = package_names
+        let resolved_packages: Vec<ResolvedPackage> = package_names
             .iter()
-            .map(|package_name| {
-                if let Ok(package) = self.resolve_package(package_name, yes) {
-                    Ok(package)
-                } else {
-                    // check if a local package is provided instead
-                    let package_path = build_path(package_name)?;
-                    if package_path.is_file() {
-                        let realpath = if package_path.is_symlink() {
-                            package_path.read_link()?
+            .filter_map(|package_name| {
+                match self.resolve_package(package_name, yes) {
+                    Ok(package) => Some(package),
+                    Err(err) => {
+                        // Check if a local package is provided instead
+                        let package_path = build_path(package_name).ok()?;
+
+                        if package_path.is_file() {
+                            let realpath = if package_path.is_symlink() {
+                                package_path.read_link().ok()?
+                            } else {
+                                package_path
+                            };
+
+                            let file = File::open(&realpath).ok()?;
+                            let mut buf_reader = BufReader::new(&file);
+                            if get_file_type(&mut buf_reader) != FileType::Unknown {
+                                let package_name = realpath.file_name().unwrap().to_string_lossy();
+                                let size = file.metadata().ok()?.len();
+                                Some(gen_package_info(&package_name, &realpath, size))
+                            } else {
+                                error!("{}", err);
+                                None
+                            }
                         } else {
-                            package_path
-                        };
-                        let file = File::open(&realpath)?;
-                        let mut buf_reader = BufReader::new(&file);
-                        if get_file_type(&mut buf_reader) != FileType::Unknown {
-                            let package_name = realpath.file_name().unwrap().to_string_lossy();
-                            let size = file.metadata()?.len();
-                            let package = gen_package_info(&package_name, &realpath, size)?;
-                            return Ok(package);
-                        };
-                    };
-                    Err(anyhow::anyhow!("Package {} not found.", package_name))
+                            error!("{}", err);
+                            None
+                        }
+                    }
                 }
             })
             .collect();
-        let resolved_packages = resolved_packages?;
 
         let results: Vec<_> = join_all(resolved_packages.iter().map(|package| {
             let installed_packages = Arc::clone(&installed_packages);

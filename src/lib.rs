@@ -23,15 +23,20 @@ mod registry;
 async fn handle_cli() -> Result<()> {
     let mut args = env::args().collect::<Vec<_>>();
 
-    if let Some(command) = args.last() {
-        if command == "-" {
-            args.pop();
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "-" {
             let mut stdin = std::io::stdin();
             let mut buffer = String::new();
             if stdin.read_to_string(&mut buffer).is_ok() {
                 let stdin_args = buffer.split_whitespace().collect::<Vec<&str>>();
-                args.extend(stdin_args.into_iter().map(String::from));
+                args.remove(i);
+                args.splice(i..i, stdin_args.into_iter().map(String::from));
+            } else {
+                i += 1;
             }
+        } else {
+            i += 1;
         }
     }
 

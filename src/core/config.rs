@@ -123,7 +123,7 @@ pub fn init() {
     let _ = &*CONFIG;
 }
 
-pub static CONFIG: LazyLock<Config> = LazyLock::new(Config::default);
+pub static CONFIG: LazyLock<Config> = LazyLock::new(Config::new);
 
 pub fn generate_default_config() -> Result<()> {
     let home_config = home_config_path();
