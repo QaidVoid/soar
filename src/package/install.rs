@@ -139,7 +139,11 @@ impl Installer {
                 {
                     setup_portable_dir(
                         &package.pkg_name,
-                        Path::new(&format!(".{}", self.install_path.display())),
+                        Path::new(&format!(
+                            "{}/.{}",
+                            self.install_path.parent().unwrap().display(),
+                            package.pkg_name
+                        )),
                         None,
                         None,
                         portable_config,
