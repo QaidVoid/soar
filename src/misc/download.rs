@@ -1,17 +1,20 @@
-use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::Path};
+use std::{env, fs::Permissions, os::unix::fs::PermissionsExt, path::Path};
 
 use anyhow::{Context, Result};
 use chrono::Utc;
 use futures::StreamExt;
 use indicatif::ProgressBar;
 use regex::Regex;
-use reqwest::Url;
+use reqwest::{
+    header::{HeaderMap, AUTHORIZATION, USER_AGENT},
+    Url,
+};
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
 };
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use crate::{
     core::{
@@ -145,9 +148,15 @@ async fn download(url: &str, output: Option<String>) -> Result<()> {
 async fn fetch_github_releases(user_repo: &str) -> Result<Vec<GithubRelease>> {
     let client = reqwest::Client::new();
     let url = format!("https://api.github.com/repos/{}/releases", user_repo);
+    let mut headers = HeaderMap::new();
+    headers.insert(USER_AGENT, "pkgforge/soar".parse()?);
+    if let Ok(token) = env::var("GITHUB_TOKEN") {
+        trace!("Using Github token: {}", token);
+        headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
+    };
     let response = client
         .get(&url)
-        .header("User-Agent", "rust-client") // GitHub API requires a user-agent header
+        .headers(headers)
         .send()
         .await
         .context("Failed to fetch GitHub releases")?;
