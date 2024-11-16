@@ -59,9 +59,13 @@ impl PackageStorage {
 
     pub fn resolve_package(&self, package_name: &str, yes: bool) -> Result<ResolvedPackage> {
         let pkg_query = parse_package_query(package_name);
-        let packages = self
+        let mut packages = self
             .get_packages(&pkg_query)
             .ok_or_else(|| anyhow::anyhow!("Package {} not found", package_name))?;
+
+        packages.sort_by(|a, b| {
+            a.package.family.cmp(&b.package.family)
+        });
 
         let package = if yes || packages.len() == 1 {
             &packages[0]
