@@ -7,14 +7,14 @@ use indicatif::ProgressBar;
 use regex::Regex;
 use reqwest::{
     header::{HeaderMap, AUTHORIZATION, USER_AGENT},
-    Url,
+    Response, StatusCode, Url,
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs::{self, File},
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
 };
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::{
     core::{
@@ -70,7 +70,11 @@ async fn is_elf(file_path: &Path) -> bool {
 
 async fn download(url: &str, output: Option<String>) -> Result<()> {
     let client = reqwest::Client::new();
-    let response = client.get(url).send().await?;
+    let response = client
+        .get(url)
+        .header(USER_AGENT, "pkgforge/soar")
+        .send()
+        .await?;
 
     if !response.status().is_success() {
         return Err(anyhow::anyhow!(
@@ -145,21 +149,58 @@ async fn download(url: &str, output: Option<String>) -> Result<()> {
     Ok(())
 }
 
-async fn fetch_github_releases(user_repo: &str) -> Result<Vec<GithubRelease>> {
+#[derive(Debug)]
+enum GithubApi {
+    PkgForge,
+    Github,
+}
+
+async fn call_github_api(gh_api: &GithubApi, user_repo: &str) -> Result<Response> {
     let client = reqwest::Client::new();
-    let url = format!("https://api.github.com/repos/{}/releases", user_repo);
+    let url = format!(
+        "{}/repos/{}/releases",
+        match gh_api {
+            GithubApi::PkgForge => "https://api.gh.pkgforge.dev",
+            GithubApi::Github => "https://api.github.com",
+        },
+        user_repo
+    );
     let mut headers = HeaderMap::new();
     headers.insert(USER_AGENT, "pkgforge/soar".parse()?);
-    if let Ok(token) = env::var("GITHUB_TOKEN") {
-        trace!("Using Github token: {}", token);
-        headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
-    };
-    let response = client
+    if matches!(gh_api, GithubApi::Github) {
+        if let Ok(token) = env::var("GITHUB_TOKEN") {
+            trace!("Using Github token: {}", token);
+            headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
+        }
+    }
+    client
         .get(&url)
         .headers(headers)
         .send()
         .await
-        .context("Failed to fetch GitHub releases")?;
+        .context("Failed to fetch GitHub releases")
+}
+
+fn should_fallback(status: StatusCode) -> bool {
+    status == StatusCode::TOO_MANY_REQUESTS
+        || status == StatusCode::UNAUTHORIZED
+        || status == StatusCode::FORBIDDEN
+        || status.is_server_error()
+}
+
+async fn fetch_github_releases(gh_api: &GithubApi, user_repo: &str) -> Result<Vec<GithubRelease>> {
+    let response = match call_github_api(gh_api, user_repo).await {
+        Ok(resp) => {
+            let status = resp.status();
+            if should_fallback(status) && matches!(gh_api, GithubApi::PkgForge) {
+                debug!("Failed to fetch Github asset using pkgforge API. Retrying request using Github API.");
+                call_github_api(&GithubApi::Github, user_repo).await?
+            } else {
+                resp
+            }
+        }
+        Err(e) => return Err(e),
+    };
 
     if !response.status().is_success() {
         anyhow::bail!(
@@ -231,7 +272,7 @@ pub async fn download_and_save(
                 let tag = caps.get(2).map(|tag| tag.as_str());
                 info!("Fetching releases for {}...", user_repo);
 
-                let releases = fetch_github_releases(user_repo).await?;
+                let releases = fetch_github_releases(&GithubApi::PkgForge, user_repo).await?;
 
                 let release = if let Some(tag_name) = tag {
                     releases
