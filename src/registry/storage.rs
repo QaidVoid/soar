@@ -63,9 +63,7 @@ impl PackageStorage {
             .get_packages(&pkg_query)
             .ok_or_else(|| anyhow::anyhow!("Package {} not found", package_name))?;
 
-        packages.sort_by(|a, b| {
-            a.package.family.cmp(&b.package.family)
-        });
+        packages.sort_by(|a, b| a.package.family.cmp(&b.package.family));
 
         let package = if yes || packages.len() == 1 {
             &packages[0]

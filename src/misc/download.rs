@@ -269,12 +269,30 @@ pub async fn download_and_save(
                                 .all(|regex| regex.is_match(&asset.name))
                                 && match_keywords.map_or(true, |keywords| {
                                     keywords.iter().all(|keyword| {
-                                        asset.name.to_lowercase().contains(&keyword.to_lowercase())
+                                        keyword
+                                            .split(',')
+                                            .map(str::trim)
+                                            .filter(|s| !s.is_empty())
+                                            .all(|part| {
+                                                asset
+                                                    .name
+                                                    .to_lowercase()
+                                                    .contains(&part.to_lowercase())
+                                            })
                                     })
                                 })
                                 && exclude_keywords.map_or(true, |keywords| {
                                     keywords.iter().all(|keyword| {
-                                        !asset.name.to_lowercase().contains(&keyword.to_lowercase())
+                                        keyword
+                                            .split(',')
+                                            .map(str::trim)
+                                            .filter(|s| !s.is_empty())
+                                            .all(|part| {
+                                                !asset
+                                                    .name
+                                                    .to_lowercase()
+                                                    .contains(&part.to_lowercase())
+                                            })
                                     })
                                 })
                         })
