@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use cli::{Args, Commands};
 use misc::{download::download_and_save, health::check_health};
+use package::build;
 use registry::PackageRegistry;
 use tracing::{debug, error, trace, warn};
 
@@ -166,6 +167,11 @@ async fn handle_cli() -> Result<()> {
         }
         Commands::Env => {
             print_env();
+        }
+        Commands::Build { files } => {
+            for file in files {
+                build::init(&file).await?;
+            }
         }
     };
 

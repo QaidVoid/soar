@@ -68,7 +68,7 @@ async fn is_elf(file_path: &Path) -> bool {
     false
 }
 
-async fn download(url: &str, output: Option<String>) -> Result<()> {
+pub async fn download(url: &str, output: Option<String>) -> Result<()> {
     let client = reqwest::Client::new();
     let response = client
         .get(url)

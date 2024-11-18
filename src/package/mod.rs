@@ -1,4 +1,5 @@
 mod appimage;
+pub mod build;
 pub mod image;
 mod install;
 pub mod remove;

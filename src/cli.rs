@@ -204,4 +204,8 @@ pub enum Commands {
     /// View env
     #[clap(name = "env")]
     Env,
+
+    /// Build
+    #[clap(name = "build")]
+    Build { files: Vec<String> },
 }
