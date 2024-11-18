@@ -43,7 +43,7 @@ struct GithubRelease {
 }
 
 static GITHUB_URL_REGEX: &str =
-    r"^(?i)(?:https?://)?(?:github(?:\.com)?[:/])([^/@]+/[^/@]+)(?:@([^/\s]+))?$";
+    r"^(?i)(?:https?://)?(?:github(?:\.com)?[:/])([^/@]+/[^/@]+)(?:@([^/\s]*)?)?$";
 
 fn extract_filename(url: &str) -> String {
     Path::new(url)
@@ -262,6 +262,7 @@ pub async fn download_and_save(
         .unwrap_or_default();
 
     for link in links {
+        let link = link.trim();
         if re.is_match(link) {
             info!(
                 "GitHub repository URL detected: {}",
@@ -269,7 +270,10 @@ pub async fn download_and_save(
             );
             if let Some(caps) = re.captures(link) {
                 let user_repo = caps.get(1).unwrap().as_str();
-                let tag = caps.get(2).map(|tag| tag.as_str());
+                let tag = caps
+                    .get(2)
+                    .map(|tag| tag.as_str().trim())
+                    .filter(|&tag| !tag.is_empty());
                 info!("Fetching releases for {}...", user_repo);
 
                 let releases = fetch_github_releases(&GithubApi::PkgForge, user_repo).await?;
