@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     env::{self, consts::ARCH},
     fs,
     path::PathBuf,
@@ -22,10 +22,10 @@ pub struct Config {
     pub soar_root: String,
 
     /// Path to the directory where cache is stored.
-    pub soar_cache: String,
+    pub soar_cache: Option<String>,
 
     /// Path to the directory where binary symlinks is stored.
-    pub soar_bin: String,
+    pub soar_bin: Option<String>,
 
     /// A list of remote repositories to fetch packages from.
     pub repositories: Vec<Repository>,
@@ -65,23 +65,45 @@ impl Repository {
 
 impl Config {
     /// Creates a new configuration by loading it from the configuration file.
-    /// If the configuration file is not found, it generates a new default configuration.
+    /// If the configuration file is not found, it uses the default configuration.
     pub fn new() -> Self {
         let home_config = home_config_path();
         let pkg_config = PathBuf::from(home_config).join("soar");
         let config_path = pkg_config.join("config.json");
-        let content = match fs::read(&config_path) {
-            Ok(content) => content,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                let def_config = Self::default();
-                serde_json::to_vec(&def_config).unwrap()
-            }
+
+        let mut config = match fs::read(&config_path) {
+            Ok(content) => serde_json::from_slice(&content).unwrap_or_else(|e| {
+                error!("Failed to parse config file: {}", e.to_string());
+                std::process::exit(1);
+            }),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Self::default(),
             Err(e) => {
-                panic!("Error reading config file: {:?}", e);
+                error!("Error reading config file: {}", e.to_string());
+                std::process::exit(1);
             }
         };
-        serde_json::from_slice(&content)
-            .unwrap_or_else(|e| panic!("Failed to parse config file: {:?}", e))
+
+        config.soar_root = env::var("SOAR_ROOT").unwrap_or(config.soar_root);
+        config.soar_bin = Some(env::var("SOAR_BIN").unwrap_or_else(|_| {
+            config
+                .soar_bin
+                .unwrap_or_else(|| format!("{}/bin", config.soar_root))
+        }));
+        config.soar_cache = Some(env::var("SOAR_CACHE").unwrap_or_else(|_| {
+            config
+                .soar_cache
+                .unwrap_or_else(|| format!("{}/cache", config.soar_root))
+        }));
+
+        let mut seen = HashSet::new();
+        for repo in &config.repositories {
+            if !seen.insert(&repo.name) {
+                error!("Found duplicate repo '{}'. Please rename the repo to have unique name. Aborting..", repo.name);
+                std::process::exit(1);
+            }
+        }
+
+        config
     }
 }
 
@@ -98,13 +120,11 @@ impl Default for Config {
 
         let soar_root =
             env::var("SOAR_ROOT").unwrap_or_else(|_| format!("{}/soar", home_data_path()));
-        let soar_bin = env::var("SOAR_BIN").unwrap_or_else(|_| format!("{}/bin", soar_root));
-        let soar_cache = env::var("SOAR_CACHE").unwrap_or_else(|_| format!("{}/cache", soar_root));
 
         Self {
-            soar_root,
-            soar_bin,
-            soar_cache,
+            soar_root: soar_root.clone(),
+            soar_bin: Some(format!("{}/bin", soar_root)),
+            soar_cache: Some(format!("{}/cache", soar_root)),
             repositories: vec![Repository {
                 name: "pkgforge".to_owned(),
                 url: format!("https://bin.pkgforge.dev/{ARCH}"),

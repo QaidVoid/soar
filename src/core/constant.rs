@@ -4,9 +4,10 @@ use super::{config::CONFIG, util::build_path};
 
 pub static ROOT_PATH: LazyLock<PathBuf> = LazyLock::new(|| build_path(&CONFIG.soar_root).unwrap());
 pub static CACHE_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| build_path(&CONFIG.soar_cache).unwrap());
+    LazyLock::new(|| build_path(&CONFIG.soar_cache.clone().unwrap()).unwrap());
 pub static REGISTRY_PATH: LazyLock<PathBuf> = LazyLock::new(|| ROOT_PATH.join("registry"));
-pub static BIN_PATH: LazyLock<PathBuf> = LazyLock::new(|| build_path(&CONFIG.soar_bin).unwrap());
+pub static BIN_PATH: LazyLock<PathBuf> =
+    LazyLock::new(|| build_path(&CONFIG.soar_bin.clone().unwrap()).unwrap());
 pub static INSTALL_TRACK_PATH: LazyLock<PathBuf> = LazyLock::new(|| ROOT_PATH.join("installs"));
 pub static PACKAGES_PATH: LazyLock<PathBuf> = LazyLock::new(|| ROOT_PATH.join("packages"));
 
