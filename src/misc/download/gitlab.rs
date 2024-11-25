@@ -17,7 +17,7 @@ use crate::{
     misc::download::download,
 };
 
-use super::should_fallback;
+use super::{should_fallback, ApiType};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct GitlabAsset {
@@ -41,25 +41,19 @@ struct GitlabRelease {
 pub static GITLAB_URL_REGEX: &str =
     r"^(?i)(?:https?://)?(?:gitlab(?:\.com)?[:/])([^/@]+/[^/@]+)(?:@([^/\s]*)?)?$";
 
-#[derive(Debug)]
-enum GitlabApi {
-    PkgForge,
-    Gitlab,
-}
-
-async fn call_gitlab_api(gh_api: &GitlabApi, user_repo: &str) -> Result<Response> {
+async fn call_gitlab_api(gh_api: &ApiType, user_repo: &str) -> Result<Response> {
     let client = reqwest::Client::new();
     let url = format!(
         "{}/api/v4/projects/{}/releases",
         match gh_api {
-            GitlabApi::PkgForge => "https://api.gl.pkgforge.dev",
-            GitlabApi::Gitlab => "https://gitlab.com",
+            ApiType::PkgForge => "https://api.gl.pkgforge.dev",
+            ApiType::Primary => "https://gitlab.com",
         },
         user_repo.replace("/", "%2F")
     );
     let mut headers = HeaderMap::new();
     headers.insert(USER_AGENT, "pkgforge/soar".parse()?);
-    if matches!(gh_api, GitlabApi::Gitlab) {
+    if matches!(gh_api, ApiType::Primary) {
         if let Ok(token) = env::var("GITLAB_TOKEN") {
             trace!("Using Gitlab token: {}", token);
             headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse()?);
@@ -73,13 +67,13 @@ async fn call_gitlab_api(gh_api: &GitlabApi, user_repo: &str) -> Result<Response
         .context("Failed to fetch Gitlab releases")
 }
 
-async fn fetch_gitlab_releases(gh_api: &GitlabApi, user_repo: &str) -> Result<Vec<GitlabRelease>> {
+async fn fetch_gitlab_releases(gh_api: &ApiType, user_repo: &str) -> Result<Vec<GitlabRelease>> {
     let response = match call_gitlab_api(gh_api, user_repo).await {
         Ok(resp) => {
             let status = resp.status();
-            if should_fallback(status) && matches!(gh_api, GitlabApi::PkgForge) {
+            if should_fallback(status) && matches!(gh_api, ApiType::PkgForge) {
                 debug!("Failed to fetch Gitlab asset using pkgforge API. Retrying request using Gitlab API.");
-                call_gitlab_api(&GitlabApi::Gitlab, user_repo).await?
+                call_gitlab_api(&ApiType::Primary, user_repo).await?
             } else {
                 resp
             }
@@ -138,7 +132,7 @@ pub async fn handle_gitlab_download(
             .filter(|&tag| !tag.is_empty());
         info!("Fetching releases for {}...", user_repo);
 
-        let releases = fetch_gitlab_releases(&GitlabApi::PkgForge, user_repo).await?;
+        let releases = fetch_gitlab_releases(&ApiType::PkgForge, user_repo).await?;
 
         let release = if let Some(tag_name) = tag {
             releases

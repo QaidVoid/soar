@@ -27,6 +27,14 @@ pub struct Args {
 }
 
 #[derive(Subcommand)]
+pub enum SelfAction {
+    /// Update soar
+    Update,
+    /// Uninstall soar
+    Uninstall,
+}
+
+#[derive(Subcommand)]
 pub enum Commands {
     /// Install packages
     #[command(arg_required_else_help = true)]
@@ -208,4 +216,12 @@ pub enum Commands {
     /// Build
     #[clap(name = "build")]
     Build { files: Vec<String> },
+
+    /// Modify the soar installation
+    #[command(arg_required_else_help = true)]
+    #[clap(name = "self")]
+    SelfCmd {
+        #[clap(subcommand)]
+        action: SelfAction,
+    },
 }

@@ -14,7 +14,7 @@ use tokio::{
 };
 use tracing::{error, info};
 
-mod github;
+pub mod github;
 mod gitlab;
 
 use crate::{

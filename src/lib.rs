@@ -1,10 +1,14 @@
 use anyhow::Result;
 use clap::Parser;
-use cli::{Args, Commands};
-use misc::{download::download_and_save, health::check_health};
+use cli::{Args, Commands, SelfAction};
+use misc::{
+    download::{download, download_and_save, github::fetch_github_releases, ApiType},
+    health::check_health,
+};
 use package::build;
 use registry::PackageRegistry;
-use tracing::{debug, error, trace, warn};
+use tokio::fs;
+use tracing::{debug, error, info, trace, warn};
 
 use core::{
     color::{Color, ColorExt},
@@ -13,7 +17,11 @@ use core::{
     log::setup_logging,
     util::{cleanup, print_env, setup_required_paths},
 };
-use std::{env, io::Read, path::Path};
+use std::{
+    env::{self, consts::ARCH},
+    io::Read,
+    path::Path,
+};
 
 mod cli;
 pub mod core;
@@ -23,6 +31,8 @@ mod registry;
 
 async fn handle_cli() -> Result<()> {
     let mut args = env::args().collect::<Vec<_>>();
+    let self_bin = args.get(0).unwrap().clone();
+    let self_version = env!("CARGO_PKG_VERSION");
 
     let mut i = 0;
     while i < args.len() {
@@ -172,6 +182,53 @@ async fn handle_cli() -> Result<()> {
             for file in files {
                 build::init(&file).await?;
             }
+        }
+        Commands::SelfCmd { action } => {
+            match action {
+                SelfAction::Update => {
+                    let is_nightly = self_version.starts_with("nightly");
+                    let gh_releases =
+                        fetch_github_releases(&ApiType::PkgForge, "pkgforge/soar").await?;
+
+                    let release = gh_releases.iter().find(|rel| {
+                        if is_nightly {
+                            return rel.name.starts_with("nightly") && rel.name != self_version;
+                        } else {
+                            rel.tag_name
+                                .trim_start_matches('v')
+                                .parse::<f32>()
+                                .map(|v| v > self_version.parse::<f32>().unwrap())
+                                .unwrap_or(false)
+                        }
+                    });
+                    if let Some(release) = release {
+                        let asset = release
+                            .assets
+                            .iter()
+                            .find(|a| {
+                                a.name.contains(ARCH)
+                                    && !a.name.contains("tar")
+                                    && !a.name.contains("sum")
+                            })
+                            .unwrap();
+                        download(&asset.browser_download_url, Some(self_bin)).await?;
+                        println!("Soar updated to {}", release.tag_name);
+                    } else {
+                        eprintln!("No updates found.");
+                    }
+                }
+                SelfAction::Uninstall => {
+                    match fs::remove_file(self_bin).await {
+                        Ok(_) => {
+                            info!("Soar has been uninstalled successfully.");
+                            info!("You should remove soar config and data files manually.");
+                        }
+                        Err(err) => {
+                            error!("{}\nFailed to uninstall soar.", err.to_string());
+                        }
+                    };
+                }
+            };
         }
     };
 

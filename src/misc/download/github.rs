@@ -20,19 +20,20 @@ use crate::{
 use super::{should_fallback, ApiType};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct GithubAsset {
-    name: String,
-    size: u64,
-    browser_download_url: String,
+pub struct GithubAsset {
+    pub name: String,
+    pub size: u64,
+    pub browser_download_url: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct GithubRelease {
-    tag_name: String,
-    draft: bool,
-    prerelease: bool,
-    published_at: String,
-    assets: Vec<GithubAsset>,
+pub struct GithubRelease {
+    pub name: String,
+    pub tag_name: String,
+    pub draft: bool,
+    pub prerelease: bool,
+    pub published_at: String,
+    pub assets: Vec<GithubAsset>,
 }
 
 pub static GITHUB_URL_REGEX: &str =
@@ -64,7 +65,10 @@ async fn call_github_api(gh_api: &ApiType, user_repo: &str) -> Result<Response> 
         .context("Failed to fetch GitHub releases")
 }
 
-async fn fetch_github_releases(gh_api: &ApiType, user_repo: &str) -> Result<Vec<GithubRelease>> {
+pub async fn fetch_github_releases(
+    gh_api: &ApiType,
+    user_repo: &str,
+) -> Result<Vec<GithubRelease>> {
     let response = match call_github_api(gh_api, user_repo).await {
         Ok(resp) => {
             let status = resp.status();
