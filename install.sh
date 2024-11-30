@@ -86,14 +86,14 @@ main() {
 
         # Get latest release URL
         echo "Downloading Soar..."
-        if [[ "$SOAR_VERSION" == *"nightly"* ]]; then
+        if echo "$SOAR_VERSION" | grep -q "nightly"; then
             RELEASE_URL="https://github.com/pkgforge/soar/releases/download/nightly/soar-nightly-$ARCH-linux"
-        elif [[ "$SOAR_VERSION" == *"latest"* ]]; then
+        elif echo "$SOAR_VERSION" | grep -q "latest"; then
             RELEASE_URL="https://github.com/pkgforge/soar/releases/latest/download/soar-$ARCH-linux"
         else
             RELEASE_URL="https://github.com/pkgforge/soar/releases/download/v$SOAR_VERSION/soar-$ARCH-linux"
         fi
-        echo $RELEASE_URL
+        echo "$RELEASE_URL"
 
         # Download and install
         $DOWNLOAD_TOOL "$RELEASE_URL" > "$INSTALL_PATH/soar"
