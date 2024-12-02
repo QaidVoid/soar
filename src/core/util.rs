@@ -44,7 +44,7 @@ pub fn home_path() -> String {
             .or_else(|_| env::var("LOGNAME"))
             .or_else(|_| get_username().map_err(|_| ()))
             .unwrap_or_else(|_| panic!("Couldn't determine username. Please fix the system."));
-        format!("home/{}", username)
+        format!("/home/{}", username)
     })
 }
 
@@ -75,18 +75,18 @@ pub fn build_path(path: &str) -> Result<PathBuf> {
                 var_name.push(chars.next().unwrap());
             }
             if !var_name.is_empty() {
-                let expanded = env::var(&var_name)
-                    .with_context(|| format!("Environment variable ${} not found", var_name))?;
+                let expanded = if var_name == "HOME" {
+                    home_path()
+                } else {
+                    env::var(&var_name)
+                        .with_context(|| format!("Environment variable ${} not found", var_name))?
+                };
                 result.push_str(&expanded);
             } else {
                 result.push('$');
             }
         } else if c == '~' && result.is_empty() {
-            if let Some(home) = env::var_os("HOME").or_else(|| env::var_os("USERPROFILE")) {
-                result.push_str(home.to_string_lossy().as_ref());
-            } else {
-                result.push('~');
-            }
+            result.push_str(&home_path())
         } else {
             result.push(c);
         }

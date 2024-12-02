@@ -29,6 +29,11 @@
     Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
 </p>
 
+> [!WARNING]
+> **Breaking Changes Ahead**
+>
+> The next version of Soar will introduce significant changes, including breaking changes to configuration formats, and behavior. Please review the CHANGELOG before upgrading.
+
 <div align="center">
 
 | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/install.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/remove.webp" /> | <img src="https://raw.githubusercontent.com/pkgforge/soar/refs/heads/autoplay/download.webp" /> | 
