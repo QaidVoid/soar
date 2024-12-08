@@ -4,8 +4,8 @@ env:
 on:
   issues:
     types: [opened]
-  pull_request:
-    types: [opened]
+#  pull_request:
+#    types: [opened]
   discussion:
     types: [created]
   workflow_dispatch: #will fail
