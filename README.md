@@ -109,6 +109,12 @@ Please feel free to:
 2. Create your feature branch
 3. Submit a pull request
 
+## 💬 Community
+
+Connect directly with our team, get quicker responses, and engage with our community!
+- [![Discord](https://img.shields.io/discord/1313385177703256064?logo=%235865F2&label=Discord)](https://discord.gg/djJUs48Zbu)
+- Other Channels: https://docs.pkgforge.dev/contact/chat
+
 ## 📝 License
 
 This project is licensed under [MIT] - see the [LICENSE](LICENSE) file for details.
