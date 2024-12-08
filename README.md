@@ -4,6 +4,8 @@
 
 [crates-shield]: https://img.shields.io/crates/v/soar-cli
 [crates-url]: https://crates.io/crates/soar-cli
+[discord-shield]: https://img.shields.io/discord/1313385177703256064?logo=%235865F2&label=Discord
+[discord-url]: https://discord.gg/djJUs48Zbu
 [stars-shield]: https://img.shields.io/github/stars/pkgforge/soar.svg
 [stars-url]: https://github.com/pkgforge/soar/stargazers
 [issues-shield]: https://img.shields.io/github/issues/pkgforge/soar.svg
@@ -12,9 +14,13 @@
 [license-url]: https://github.com/pkgforge/soar/blob/main/LICENSE
 [doc-shield]: https://img.shields.io/badge/docs-soar.qaidvoid.dev-blue
 [doc-url]: https://soar.qaidvoid.dev
+[pkgforge-shield]: https://img.shields.io/badge/pkgforge-docs.pkgforge.dev-blue
+[pkgforge-url]: https://docs.pkgforge.dev
 
 [![Crates.io][crates-shield]][crates-url]
+[![Discord][discord-shield]][discord-url]
 [![Documentation][doc-shield]][doc-url]
+[![PkgForge][pkgforge-shield]][pkgforge-url]
 [![Issues][issues-shield]][issues-url]
 [![License: MIT][license-shield]][license-url]
 [![Stars][stars-shield]][stars-url]
@@ -22,11 +28,13 @@
 </div>
 
 <p align="center">
-    <img src="icons/hicolor/scalable/apps/soar.svg" alt="soar" width="256"/>
+    <a href="https://soar.qaidvoid.dev/installation">
+        <img src="https://bin.pkgforge.dev/list.gif?random123=randomxyz" alt="soar-list" width="850">
+    </a><br>
 </p>
 
 <p align="center">
-    Soar is a fast Linux package manager that doesn't suck. Works with static binaries, AppImages, and other portable stuff.
+    Soar is a fast Linux package manager that <a href="https://docs.pkgforge.dev/soar/comparisons"> doesn't suck</a>. Works with <a href="https://docs.pkgforge.dev/formats/binaries/static">Static Binaries</a>, <a href="https://docs.pkgforge.dev/formats/packages/appimage">AppImages</a>, and other <a href="https://docs.pkgforge.dev/formats/packages">Portable formats</a>.
 </p>
 
 > [!WARNING]
@@ -47,9 +55,11 @@
 ## 🌟 Key Features
 - [Universal Package Support](https://soar.qaidvoid.dev/#universal-package-support)
 - [Desktop Integration](https://soar.qaidvoid.dev/#desktop-integration)
+- [& Much More](https://docs.pkgforge.dev/soar/comparisons)
 
 ## 🔧 Installation
-Installation guide can be found [here](https://soar.qaidvoid.dev/installation.html).
+- Docs: https://soar.qaidvoid.dev/installation.html
+- Extra Guide & Information: https://docs.pkgforge.dev
 
 ## 🎯 Usage
 
